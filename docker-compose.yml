@@ -1,0 +1,63 @@
+services:
+  products-service:
+    build:
+      context: ./services/products-service
+    container_name: cookie-products-service
+    restart: unless-stopped
+    environment:
+      PORT: 4001
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-admin-secret}
+      DATABASE_PATH: /app/data/products.json
+    volumes:
+      - products-data:/app/data
+    ports:
+      - "4001:4001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4001/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  upload-service:
+    build:
+      context: ./services/upload-service
+    container_name: cookie-upload-service
+    restart: unless-stopped
+    environment:
+      PORT: 4002
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-admin-secret}
+      PUBLIC_URL: ${UPLOAD_PUBLIC_URL:-http://localhost:4002}
+    volumes:
+      - upload-data:/app/uploads
+    ports:
+      - "4002:4002"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4002/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        PRODUCTS_API_URL: http://products-service:4001
+        NEXT_PUBLIC_PRODUCTS_API_URL: ${NEXT_PUBLIC_PRODUCTS_API_URL:-http://localhost:4001}
+        NEXT_PUBLIC_UPLOAD_API_URL: ${NEXT_PUBLIC_UPLOAD_API_URL:-http://localhost:4002}
+    container_name: cookie-web
+    restart: unless-stopped
+    environment:
+      PRODUCTS_API_URL: http://products-service:4001
+      NEXT_PUBLIC_PRODUCTS_API_URL: ${NEXT_PUBLIC_PRODUCTS_API_URL:-http://localhost:4001}
+      NEXT_PUBLIC_UPLOAD_API_URL: ${NEXT_PUBLIC_UPLOAD_API_URL:-http://localhost:4002}
+    ports:
+      - "3000:3000"
+    depends_on:
+      products-service:
+        condition: service_healthy
+      upload-service:
+        condition: service_healthy
+
+volumes:
+  products-data:
+  upload-data:

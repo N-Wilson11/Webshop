@@ -1,0 +1,21 @@
+{
+  "name": "webshop",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A cookie webshop built with microservices",
+  "workspaces": [
+    "apps/*",
+    "services/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "dev:products": "npm run dev --workspace=services/products-service",
+    "dev:upload": "npm run dev --workspace=services/upload-service",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

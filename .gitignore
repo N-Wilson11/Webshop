@@ -1,0 +1,16 @@
+node_modules/
+.next/
+dist/
+build/
+*.log
+.env
+.env.local
+.env*.local
+data/*.sqlite
+data/*.sqlite-journal
+uploads/*
+!uploads/.gitkeep
+.vercel
+coverage/
+.DS_Store
+Thumbs.db

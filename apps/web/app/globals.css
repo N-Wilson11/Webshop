@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #8b5e3c;
+  --color-secondary: #f4b942;
+  --color-accent: #d96c4c;
+  --color-background: #fff8f0;
+  --color-text: #3a2618;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
