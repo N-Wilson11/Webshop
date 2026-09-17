@@ -37,17 +37,38 @@ services:
       timeout: 5s
       retries: 5
 
+  mail-service:
+    build:
+      context: ./services/mail-service
+    container_name: cookie-mail-service
+    restart: unless-stopped
+    environment:
+      PORT: 4003
+      SMTP_URL: ${SMTP_URL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4003/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   web:
     build:
       context: ./apps/web
       args:
         PRODUCTS_API_URL: http://products-service:4001
+        MAIL_SERVICE_URL: http://mail-service:4003
         NEXT_PUBLIC_PRODUCTS_API_URL: ${NEXT_PUBLIC_PRODUCTS_API_URL:-http://localhost:4001}
         NEXT_PUBLIC_UPLOAD_API_URL: ${NEXT_PUBLIC_UPLOAD_API_URL:-http://localhost:4002}
     container_name: cookie-web
     restart: unless-stopped
     environment:
       PRODUCTS_API_URL: http://products-service:4001
+      MAIL_SERVICE_URL: http://mail-service:4003
       NEXT_PUBLIC_PRODUCTS_API_URL: ${NEXT_PUBLIC_PRODUCTS_API_URL:-http://localhost:4001}
       NEXT_PUBLIC_UPLOAD_API_URL: ${NEXT_PUBLIC_UPLOAD_API_URL:-http://localhost:4002}
     ports:
@@ -56,6 +77,8 @@ services:
       products-service:
         condition: service_healthy
       upload-service:
+        condition: service_healthy
+      mail-service:
         condition: service_healthy
 
 volumes:

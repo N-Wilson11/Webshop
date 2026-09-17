@@ -7,6 +7,8 @@ import { formatPrice } from "@/lib/api";
 export default function CheckoutPage() {
   const { items, totalPrice, clear } = useCart();
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({ name: "", email: "", address: "" });
 
   if (submitted) {
@@ -30,10 +32,38 @@ export default function CheckoutPage() {
       <h1 className="mb-6 font-display text-3xl font-bold text-ink">Checkout</h1>
       <form
         className="flex flex-col gap-4"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          setSubmitted(true);
-          clear();
+          setError("");
+          setIsSubmitting(true);
+
+          try {
+            const response = await fetch("/api/order-confirmation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: form.email,
+                name: form.name,
+                items,
+                totalPrice,
+                currency: items[0]?.currency || "EUR"
+              })
+            });
+
+            if (!response.ok) {
+              const data = (await response.json()) as { error?: string };
+              throw new Error(data.error || "We could not send your confirmation email.");
+            }
+
+            setSubmitted(true);
+            clear();
+          } catch (error) {
+            setError(
+              error instanceof Error ? error.message : "We could not send your confirmation email."
+            );
+          } finally {
+            setIsSubmitting(false);
+          }
         }}
       >
         <input
@@ -65,11 +95,13 @@ export default function CheckoutPage() {
             {formatPrice(totalPrice, items[0]?.currency || "EUR")}
           </span>
         </div>
+        {error && <p className="text-sm text-red-700">{error}</p>}
         <button
           type="submit"
+          disabled={isSubmitting}
           className="rounded-full bg-primary px-6 py-3 font-semibold text-white transition hover:bg-primary/90"
         >
-          Place order
+          {isSubmitting ? "Sending confirmation..." : "Place order"}
         </button>
       </form>
     </div>

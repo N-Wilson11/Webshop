@@ -55,6 +55,21 @@ Available variables:
 - `NEXT_PUBLIC_PRODUCTS_API_URL`: products API URL used by the browser
 - `NEXT_PUBLIC_UPLOAD_API_URL`: upload API URL used by the browser
 - `UPLOAD_PUBLIC_URL`: public URL returned for uploaded files
+- `SMTP_URL`: SMTP connection URL used to deliver order confirmations
+- `MAIL_FROM`: sender address displayed on order confirmations
+
+Reserved URL characters in the SMTP login or key (such as `@`, `:`, `/`, and `#`) must be
+percent-encoded in `SMTP_URL`.
+
+For Brevo, configuring the separate SMTP values avoids URL encoding:
+
+```env
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_USER=your-brevo-smtp-login@example.com
+SMTP_PASSWORD=your-brevo-smtp-key
+MAIL_FROM=Cookie Corner <your-verified-sender@example.com>
+```
 
 The default Docker configuration uses `admin-secret` and localhost URLs for the published APIs.
 
