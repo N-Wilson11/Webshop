@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import request from "supertest";
-import { createApp } from "../src/index";
+import { createApp, getSenderName } from "../src/index";
 
 const order = {
   email: "customer@example.com",
@@ -11,6 +11,11 @@ const order = {
 };
 
 describe("mail-service", () => {
+  it("uses the display name from the configured sender", () => {
+    expect(getSenderName("The Cookie Company <orders@example.com>")).toBe("The Cookie Company");
+    expect(getSenderName("orders@example.com")).toBe("orders");
+  });
+
   it("responds healthy", async () => {
     const app = createApp(vi.fn());
     const response = await request(app).get("/health");
