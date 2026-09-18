@@ -32,17 +32,6 @@ Open the webshop at:
 - Products API: http://localhost:4001
 - Upload API: http://localhost:4002
 
-Check the containers:
-
-```powershell
-docker compose ps
-```
-
-View logs:
-
-```powershell
-docker compose logs -f
-```
 
 Stop the application:
 
@@ -56,9 +45,6 @@ Product data and uploaded files are stored in Docker volumes and remain availabl
 
 Copy `.env.example` to `.env` if you need to override the defaults:
 
-```powershell
-Copy-Item .env.example .env
-```
 
 Available variables:
 
@@ -81,9 +67,6 @@ SMTP_USER=your-brevo-smtp-login@example.com
 SMTP_PASSWORD=your-brevo-smtp-key
 MAIL_FROM=Cookie Corner <your-verified-sender@example.com>
 ```
-
-The default Docker configuration uses `admin-secret` and localhost URLs for the published APIs.
-Never commit a populated `.env` file or SMTP credentials to a public repository.
 
 ## Deploy services to Render
 
@@ -125,64 +108,3 @@ MAIL_SERVICE_URL=https://your-mail-service.onrender.com
 
 Redeploy after changing an environment variable. Do not use `localhost` or Docker service names in
 Vercel because they are not reachable from the deployed application.
-
-## Local development without Docker
-
-Install dependencies from the repository root:
-
-```powershell
-npm install
-```
-
-Run the services in separate terminals:
-
-```powershell
-npm run dev:products
-npm run dev:upload
-npm run dev
-```
-
-The web application runs at http://localhost:3000.
-
-## Tests
-
-Run all workspace tests:
-
-```powershell
-npm test
-```
-
-Run the linter:
-
-```powershell
-npm run lint
-```
-
-## Troubleshooting
-
-### Docker cannot connect to the engine
-
-Start Docker Desktop and wait until the Linux engine is running, then retry:
-
-```powershell
-docker compose up -d --build
-```
-
-### The web build appears stuck at `npm install`
-
-The web app has its own `apps/web/package-lock.json`. Rebuild without stale build cache:
-
-```powershell
-docker compose build --no-cache web
-docker compose up -d
-```
-
-### No containers appear
-
-Containers are created after all images build successfully. Inspect the build and service status with:
-
-```powershell
-docker compose build --progress=plain
-docker compose ps -a
-docker compose logs
-```
