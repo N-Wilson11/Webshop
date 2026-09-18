@@ -1,6 +1,17 @@
-# Webshop
+# Cookie Webshop
 
-Cookie webshop built with Next.js and three Node.js microservices.
+A full-stack cookie webshop built with Next.js and three Node.js microservices.
+
+**Live demo:** [webshop-web-six.vercel.app](https://webshop-web-six.vercel.app/)
+
+## Features
+
+- Product catalogue, shopping cart, and checkout flow
+- Branded order confirmation emails sent through Brevo
+- CMS for managing products, images, and shop theme settings
+- Docker Compose setup for local development
+- Render Blueprint for deploying the backend services
+- GitHub Actions checks for tests, linting, and production builds
 
 ## Run with Docker
 
@@ -72,6 +83,7 @@ MAIL_FROM=Cookie Corner <your-verified-sender@example.com>
 ```
 
 The default Docker configuration uses `admin-secret` and localhost URLs for the published APIs.
+Never commit a populated `.env` file or SMTP credentials to a public repository.
 
 ## Deploy services to Render
 
@@ -98,6 +110,21 @@ MAIL_SERVICE_URL=https://your-mail-service.onrender.com
 
 Render free services spin down after inactivity and have ephemeral storage. Product edits and
 uploaded images can be lost after a redeploy or restart; use persistent storage for production.
+
+## Deploy the web app to Vercel
+
+Import this repository into Vercel and set the project root directory to `apps/web`. Configure the
+following Production environment variables with the public URLs of your deployed Render services:
+
+```env
+NEXT_PUBLIC_PRODUCTS_API_URL=https://your-products-service.onrender.com
+PRODUCTS_API_URL=https://your-products-service.onrender.com
+NEXT_PUBLIC_UPLOAD_API_URL=https://your-upload-service.onrender.com
+MAIL_SERVICE_URL=https://your-mail-service.onrender.com
+```
+
+Redeploy after changing an environment variable. Do not use `localhost` or Docker service names in
+Vercel because they are not reachable from the deployed application.
 
 ## Local development without Docker
 
