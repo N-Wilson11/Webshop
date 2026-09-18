@@ -16,6 +16,14 @@ describe("products-service", () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThan(0);
+    expect(res.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "choc-chip", imageUrl: "/images/chocolate-chip.png" }),
+        expect.objectContaining({ id: "pineapple-upside-down", imageUrl: "/images/pineapple-upside-down.png" }),
+        expect.objectContaining({ id: "brownies", imageUrl: "/images/brownies.png" }),
+        expect.objectContaining({ id: "cocada", imageUrl: "/images/cocada.png" })
+      ])
+    );
   });
 
   it("rejects product creation without admin token", async () => {

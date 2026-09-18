@@ -45,6 +45,13 @@ const defaultTheme: Theme = {
   }
 };
 
+const legacySeedImageUrls: Record<string, string> = {
+  "images/Chocolate chip.png": "/images/chocolate-chip.png",
+  "images/pineapple upside down.png": "/images/pineapple-upside-down.png",
+  "images/Brownies.png": "/images/brownies.png",
+  "images/Cocada.png": "/images/cocada.png"
+};
+
 function seedProducts(): Product[] {
   const now = new Date().toISOString();
   return [
@@ -56,7 +63,7 @@ function seedProducts(): Product[] {
       currency: "EUR",
       category: "cookies",
       stock: 50,
-      imageUrl: "images/Brownies.png",
+      imageUrl: "/images/chocolate-chip.png",
       featured: true,
       createdAt: now,
       updatedAt: now
@@ -69,7 +76,7 @@ function seedProducts(): Product[] {
       currency: "EUR",
       category: "cookies",
       stock: 40,
-      imageUrl: "images/pineapple upside down.png",
+      imageUrl: "/images/pineapple-upside-down.png",
       featured: true,
       createdAt: now,
       updatedAt: now
@@ -82,7 +89,7 @@ function seedProducts(): Product[] {
       currency: "EUR",
       category: "cookies",
       stock: 30,
-      imageUrl: "images/Brownies.png",
+      imageUrl: "/images/brownies.png",
       featured: false,
       createdAt: now,
       updatedAt: now
@@ -95,7 +102,7 @@ function seedProducts(): Product[] {
       currency: "EUR",
       category: "cookies",
       stock: 30,
-      imageUrl: "images/Cocada.png",
+      imageUrl: "/images/cocada.png",
       featured: false,
       createdAt: now,
       updatedAt: now
@@ -109,6 +116,19 @@ const dataDir = path.join(__dirname, "..", "data");
 const dbPath = process.env.DATABASE_PATH || path.join(dataDir, "products.json");
 
 let memoryData: Data | null = null;
+
+function migrateLegacySeedImageUrls(data: Data): Data {
+  const products = data.products.map((product) => {
+    const imageUrl = legacySeedImageUrls[product.imageUrl];
+    return imageUrl ? { ...product, imageUrl } : product;
+  });
+
+  if (products.every((product, index) => product === data.products[index])) {
+    return data;
+  }
+
+  return { ...data, products };
+}
 
 function load(): Data {
   if (isMemory) {
@@ -125,7 +145,9 @@ function load(): Data {
     return initial;
   }
   const raw = fs.readFileSync(dbPath, "utf-8");
-  return JSON.parse(raw) as Data;
+  const data = migrateLegacySeedImageUrls(JSON.parse(raw) as Data);
+  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+  return data;
 }
 
 function save(data: Data) {

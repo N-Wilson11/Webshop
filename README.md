@@ -40,6 +40,8 @@ docker compose down
 ```
 
 Product data and uploaded files are stored in Docker volumes and remain available after containers are stopped.
+The default product images are versioned static assets in `apps/web/public/images`; seeded product
+records use `/images/<filename>` URLs served by the web app.
 
 ## Configuration
 
