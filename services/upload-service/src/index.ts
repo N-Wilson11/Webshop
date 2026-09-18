@@ -41,7 +41,10 @@ app.get("/health", (_req, res) => res.json({ status: "ok", service: "upload-serv
 app.post("/upload", requireAdmin, upload.single("image"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No image file provided" });
 
-  const publicBase = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 4002}`;
+  const publicBase =
+    process.env.PUBLIC_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    `http://localhost:${process.env.PORT || 4002}`;
   const url = `${publicBase}/uploads/${req.file.filename}`;
   res.status(201).json({ url, filename: req.file.filename });
 });
