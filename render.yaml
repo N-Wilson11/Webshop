@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: webshop-products-service
+    runtime: docker
+    plan: free
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    dockerContext: ./services/products-service
+    dockerfilePath: ./services/products-service/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_TOKEN
+        sync: false
+
+  - type: web
+    name: webshop-upload-service
+    runtime: docker
+    plan: free
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    dockerContext: ./services/upload-service
+    dockerfilePath: ./services/upload-service/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_TOKEN
+        sync: false
+
+  - type: web
+    name: webshop-mail-service
+    runtime: docker
+    plan: free
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    dockerContext: ./services/mail-service
+    dockerfilePath: ./services/mail-service/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SMTP_HOST
+        value: smtp-relay.brevo.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false

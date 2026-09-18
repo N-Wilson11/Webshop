@@ -1,6 +1,6 @@
 # Webshop
 
-Cookie webshop built with Next.js and two Node.js microservices.
+Cookie webshop built with Next.js and three Node.js microservices.
 
 ## Run with Docker
 
@@ -72,6 +72,32 @@ MAIL_FROM=Cookie Corner <your-verified-sender@example.com>
 ```
 
 The default Docker configuration uses `admin-secret` and localhost URLs for the published APIs.
+
+## Deploy services to Render
+
+The included [`render.yaml`](render.yaml) Blueprint creates the products, upload, and mail services
+from the `main` branch. In the Render Dashboard, select **New +** → **Blueprint**, connect this
+repository, and confirm the three services.
+
+During setup, enter:
+
+- The **same** strong `ADMIN_TOKEN` for both the products and upload services. Use that token to
+  sign in to the CMS.
+- Your Brevo SMTP login in `SMTP_USER`, SMTP key in `SMTP_PASSWORD`, and verified sender in
+  `MAIL_FROM`.
+
+After Render deploys each service, copy its public URL. Add the following values to the Vercel
+project's Production environment variables, then redeploy the web project:
+
+```env
+NEXT_PUBLIC_PRODUCTS_API_URL=https://your-products-service.onrender.com
+PRODUCTS_API_URL=https://your-products-service.onrender.com
+NEXT_PUBLIC_UPLOAD_API_URL=https://your-upload-service.onrender.com
+MAIL_SERVICE_URL=https://your-mail-service.onrender.com
+```
+
+Render free services spin down after inactivity and have ephemeral storage. Product edits and
+uploaded images can be lost after a redeploy or restart; use persistent storage for production.
 
 ## Local development without Docker
 
