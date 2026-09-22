@@ -2,14 +2,15 @@ import cors from "cors";
 import express, { type Request, type Response } from "express";
 import nodemailer from "nodemailer";
 
-type OrderItem = {
+export type OrderItem = {
   name: string;
   quantity: number;
   price: number;
   currency: string;
+  imageUrl?: string;
 };
 
-type OrderConfirmation = {
+export type OrderConfirmation = {
   email: string;
   name: string;
   items: OrderItem[];
@@ -39,7 +40,8 @@ function isOrderConfirmation(value: unknown): value is OrderConfirmation {
         (item as OrderItem).quantity > 0 &&
         Number.isFinite((item as OrderItem).price) &&
         (item as OrderItem).price >= 0 &&
-        typeof (item as OrderItem).currency === "string"
+        typeof (item as OrderItem).currency === "string" &&
+        ((item as OrderItem).imageUrl === undefined || typeof (item as OrderItem).imageUrl === "string")
     ) &&
     Number.isFinite(order.totalPrice) &&
     (order.totalPrice as number) >= 0 &&
@@ -49,6 +51,14 @@ function isOrderConfirmation(value: unknown): value is OrderConfirmation {
 
 function formatPrice(price: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(price);
+}
+
+function resolveImageUrl(imageUrl: string | undefined): string | null {
+  if (!imageUrl) return null;
+  if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+
+  const base = process.env.PUBLIC_WEB_URL || "http://localhost:3000";
+  return `${base.replace(/\/$/, "")}/${imageUrl.replace(/^\//, "")}`;
 }
 
 function escapeHtml(value: string) {
@@ -71,54 +81,80 @@ export function getSenderName(from: string) {
   return from.split("@")[0].trim();
 }
 
-export function createSmtpMailer(): SendOrderConfirmation {
-  const smtpUrl = process.env.SMTP_URL;
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPassword = process.env.SMTP_PASSWORD;
-  const from = process.env.MAIL_FROM;
+function guessExtension(imageUrl: string, contentType: string | null) {
+  const fromContentType = contentType?.split("/")[1]?.split(";")[0];
+  if (fromContentType) return fromContentType;
 
-  if (!from || (!smtpUrl && !(smtpHost && smtpUser && smtpPassword))) {
-    throw new Error(
-      "MAIL_FROM and either SMTP_URL or SMTP_HOST, SMTP_USER, and SMTP_PASSWORD must be configured"
-    );
+  const fromUrl = imageUrl.split(/[?#]/)[0].split(".").pop();
+  return fromUrl && fromUrl.length <= 5 ? fromUrl : "jpg";
+}
+
+async function fetchInlineImage(imageUrl: string | undefined, cid: string) {
+  const resolved = resolveImageUrl(imageUrl);
+  if (!resolved) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(resolved, { signal: controller.signal });
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get("content-type");
+    const content = Buffer.from(await response.arrayBuffer());
+
+    return {
+      cid,
+      filename: `${cid}.${guessExtension(resolved, contentType)}`,
+      content,
+      contentType: contentType || undefined
+    };
+  } catch (error) {
+    console.warn(`Unable to fetch order confirmation image from ${resolved}`, error);
+    return null;
+  } finally {
+    clearTimeout(timeout);
   }
+}
 
-  const transport =
-    smtpHost && smtpUser && smtpPassword
-      ? nodemailer.createTransport({
-          host: smtpHost,
-          port: Number(process.env.SMTP_PORT || 587),
-          secure: process.env.SMTP_PORT === "465",
-          auth: {
-            user: smtpUser,
-            pass: smtpPassword
-          }
-        })
-      : nodemailer.createTransport(smtpUrl as string);
-  const senderName = getSenderName(from);
+export async function buildOrderConfirmationEmail(order: OrderConfirmation, senderName: string) {
+  const imageAttachments = await Promise.all(
+    order.items.map((item, index) => fetchInlineImage(item.imageUrl, `item-image-${index}`))
+  );
 
-  return async (order) => {
-    const itemRows = order.items
-      .map(
-        (item) =>
-          `<tr>
-            <td style="padding: 14px 0; border-bottom: 1px solid #eadfd5; color: #3a2618; font-size: 15px; line-height: 22px;">${escapeHtml(item.name)}</td>
+  const itemRows = order.items
+    .map((item, index) => {
+      const attachment = imageAttachments[index];
+      const imageCell = attachment
+        ? `<img src="cid:${attachment.cid}" alt="${escapeHtml(item.name)}" width="56" height="56" style="display: block; width: 56px; height: 56px; border-radius: 10px; object-fit: cover;" />`
+        : `<div style="width: 56px; height: 56px; border-radius: 10px; background-color: #fff2df; text-align: center; line-height: 56px; font-size: 24px;">🍪</div>`;
+
+      return `<tr>
+            <td style="padding: 14px 0; border-bottom: 1px solid #eadfd5;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="width: 56px; padding-right: 12px; vertical-align: middle;">${imageCell}</td>
+                  <td style="vertical-align: middle; color: #3a2618; font-size: 15px; line-height: 22px;">${escapeHtml(item.name)}</td>
+                </tr>
+              </table>
+            </td>
             <td align="center" style="padding: 14px 12px; border-bottom: 1px solid #eadfd5; color: #705c50; font-size: 15px; line-height: 22px;">${item.quantity}</td>
             <td align="right" style="padding: 14px 0; border-bottom: 1px solid #eadfd5; color: #3a2618; font-size: 15px; font-weight: 600; line-height: 22px; white-space: nowrap;">${formatPrice(item.price * item.quantity, item.currency)}</td>
-          </tr>`
-      )
-      .join("");
-    const total = formatPrice(order.totalPrice, order.currency);
+          </tr>`;
+    })
+    .join("");
+  const total = formatPrice(order.totalPrice, order.currency);
+  const attachments = imageAttachments.filter(
+    (attachment): attachment is NonNullable<typeof attachment> => attachment !== null
+  );
 
-    await transport.sendMail({
-      from,
-      to: order.email,
-      subject: `Order confirmed — ${senderName}`,
-      text: `Hello ${order.name},\n\nThank you for your order!\n\n${order.items
-        .map((item) => `${item.quantity} x ${item.name} — ${formatPrice(item.price * item.quantity, item.currency)}`)
-        .join("\n")}\n\nTotal: ${total}\n\nWe are preparing your cookies now.\n\nWith love,\n${senderName}`,
-      html: `<!doctype html>
+  return {
+    subject: `Order confirmed — ${senderName}`,
+    text: `Hello ${order.name},\n\nThank you for your order!\n\n${order.items
+      .map((item) => `${item.quantity} x ${item.name} — ${formatPrice(item.price * item.quantity, item.currency)}`)
+      .join("\n")}\n\nTotal: ${total}\n\nWe are preparing your cookies now.\n\nWith love,\n${senderName}`,
+    attachments,
+    html: `<!doctype html>
 <html lang="en">
   <body style="margin: 0; padding: 0; background-color: #fff8f0; color: #3a2618; font-family: Arial, Helvetica, sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #fff8f0; padding: 32px 16px;">
@@ -167,6 +203,46 @@ export function createSmtpMailer(): SendOrderConfirmation {
     </table>
   </body>
 </html>`
+  };
+}
+
+export function createSmtpMailer(): SendOrderConfirmation {
+  const smtpUrl = process.env.SMTP_URL;
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPassword = process.env.SMTP_PASSWORD;
+  const from = process.env.MAIL_FROM;
+
+  if (!from || (!smtpUrl && !(smtpHost && smtpUser && smtpPassword))) {
+    throw new Error(
+      "MAIL_FROM and either SMTP_URL or SMTP_HOST, SMTP_USER, and SMTP_PASSWORD must be configured"
+    );
+  }
+
+  const transport =
+    smtpHost && smtpUser && smtpPassword
+      ? nodemailer.createTransport({
+          host: smtpHost,
+          port: Number(process.env.SMTP_PORT || 587),
+          secure: process.env.SMTP_PORT === "465",
+          auth: {
+            user: smtpUser,
+            pass: smtpPassword
+          }
+        })
+      : nodemailer.createTransport(smtpUrl as string);
+  const senderName = getSenderName(from);
+
+  return async (order) => {
+    const email = await buildOrderConfirmationEmail(order, senderName);
+
+    await transport.sendMail({
+      from,
+      to: order.email,
+      subject: email.subject,
+      text: email.text,
+      html: email.html,
+      attachments: email.attachments
     });
   };
 }
