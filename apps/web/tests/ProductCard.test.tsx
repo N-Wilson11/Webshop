@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { Header } from "@/components/Header";
 import { ProductCard } from "@/components/ProductCard";
@@ -21,6 +21,10 @@ const sampleProduct: Product = {
 };
 
 describe("ProductCard", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it("renders product name and price", () => {
     render(
       <CartProvider>
@@ -54,5 +58,20 @@ describe("ProductCard", () => {
     expect(screen.getByRole("button", { name: "Added" })).toBeInTheDocument();
     const cart = screen.getByRole("link", { name: "Cart, 1 item" });
     expect(cart.querySelector(".cart-add-animation")).toBeInTheDocument();
+  });
+
+  it("shows an incrementing quantity badge when clicked multiple times", () => {
+    render(
+      <CartProvider>
+        <ProductCard product={sampleProduct} />
+      </CartProvider>
+    );
+
+    const button = screen.getByRole("button", { name: "Add to cart" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    expect(screen.getByLabelText("3 in cart")).toBeInTheDocument();
   });
 });

@@ -6,10 +6,11 @@ import { formatPrice, type Product } from "@/lib/api";
 import { useCart } from "@/components/CartProvider";
 
 export function AddToCartPanel({ product }: { product: Product }) {
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quantityInCart = items.find((i) => i.id === product.id)?.quantity ?? 0;
 
   useEffect(() => {
     return () => {
@@ -48,15 +49,26 @@ export function AddToCartPanel({ product }: { product: Product }) {
           onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
           className="w-20 rounded-lg border border-black/10 px-3 py-2"
         />
-        <button
-          onClick={handleAddToCart}
-          disabled={product.stock <= 0}
-          className={`rounded-full bg-primary px-6 py-3 font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${
-            added ? "add-to-cart-confirmation" : ""
-          }`}
-        >
-          {added ? "Added" : "Add to cart"}
-        </button>
+        <div className="relative">
+          <button
+            onClick={handleAddToCart}
+            disabled={product.stock <= 0}
+            className={`rounded-full bg-primary px-6 py-3 font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${
+              added ? "add-to-cart-confirmation" : ""
+            }`}
+          >
+            {added ? "Added" : "Add to cart"}
+          </button>
+          {quantityInCart > 0 && (
+            <span
+              key={quantityInCart}
+              aria-label={`${quantityInCart} in cart`}
+              className="cart-add-animation absolute -right-2 -top-2 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-accent px-1 text-xs font-bold text-white"
+            >
+              {quantityInCart}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
