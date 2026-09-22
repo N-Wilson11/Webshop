@@ -51,3 +51,5 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
+      - key: PUBLIC_WEB_URL
+        sync: false
