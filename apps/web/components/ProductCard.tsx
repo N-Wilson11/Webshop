@@ -1,12 +1,29 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { formatPrice, type Product } from "@/lib/api";
 import { useCart } from "./CartProvider";
 
 export function ProductCard({ product }: { product: Product }) {
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
+  const [added, setAdded] = useState(false);
+  const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quantityInCart = items.find((i) => i.id === product.id)?.quantity ?? 0;
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+    };
+  }, []);
+
+  function handleAddToCart() {
+    addItem(product);
+    setAdded(true);
+    if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+    feedbackTimeout.current = setTimeout(() => setAdded(false), 1500);
+  }
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:shadow-lg">
@@ -39,13 +56,26 @@ export function ProductCard({ product }: { product: Product }) {
           <span className="text-lg font-bold text-primary">
             {formatPrice(product.price, product.currency)}
           </span>
-          <button
-            onClick={() => addItem(product)}
-            disabled={product.stock <= 0}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {product.stock <= 0 ? "Sold out" : "Add to cart"}
-          </button>
+          <div className="relative">
+            <button
+              onClick={handleAddToCart}
+              disabled={product.stock <= 0}
+              className={`rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${
+                added ? "add-to-cart-confirmation" : ""
+              }`}
+            >
+              {product.stock <= 0 ? "Sold out" : added ? "Added" : "Add to cart"}
+            </button>
+            {quantityInCart > 0 && (
+              <span
+                key={quantityInCart}
+                aria-label={`${quantityInCart} in cart`}
+                className="cart-add-animation absolute -right-2 -top-2 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-accent px-1 text-xs font-bold text-white"
+              >
+                {quantityInCart}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
