@@ -20,6 +20,7 @@ type CartContextValue = {
   clear: () => void;
   totalItems: number;
   totalPrice: number;
+  cartAnimation: number;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -28,6 +29,7 @@ const STORAGE_KEY = "cookie-shop-cart";
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [cartAnimation, setCartAnimation] = useState(0);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -46,6 +48,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, hydrated]);
 
   function addItem(product: Product, quantity = 1) {
+    setCartAnimation((animation) => animation + 1);
     setItems((prev) => {
       const existing = prev.find((i) => i.id === product.id);
       if (existing) {
@@ -88,7 +91,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, updateQuantity, clear, totalItems, totalPrice }}
+      value={{
+        items,
+        addItem,
+        removeItem,
+        updateQuantity,
+        clear,
+        totalItems,
+        totalPrice,
+        cartAnimation
+      }}
     >
       {children}
     </CartContext.Provider>

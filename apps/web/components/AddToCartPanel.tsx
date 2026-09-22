@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { formatPrice, type Product } from "@/lib/api";
 import { useCart } from "@/components/CartProvider";
@@ -9,6 +9,20 @@ export function AddToCartPanel({ product }: { product: Product }) {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+    };
+  }, []);
+
+  function handleAddToCart() {
+    addItem(product, quantity);
+    setAdded(true);
+    if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+    feedbackTimeout.current = setTimeout(() => setAdded(false), 1500);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -35,15 +49,13 @@ export function AddToCartPanel({ product }: { product: Product }) {
           className="w-20 rounded-lg border border-black/10 px-3 py-2"
         />
         <button
-          onClick={() => {
-            addItem(product, quantity);
-            setAdded(true);
-            setTimeout(() => setAdded(false), 1500);
-          }}
+          onClick={handleAddToCart}
           disabled={product.stock <= 0}
-          className="rounded-full bg-primary px-6 py-3 font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className={`rounded-full bg-primary px-6 py-3 font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${
+            added ? "add-to-cart-confirmation" : ""
+          }`}
         >
-          {added ? "Added ✓" : "Add to cart"}
+          {added ? "Added" : "Add to cart"}
         </button>
       </div>
     </div>

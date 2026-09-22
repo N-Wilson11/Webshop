@@ -1,6 +1,7 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { Header } from "@/components/Header";
 import { ProductCard } from "@/components/ProductCard";
 import { CartProvider } from "@/components/CartProvider";
 import type { Product } from "@/lib/api";
@@ -38,5 +39,20 @@ describe("ProductCard", () => {
       </CartProvider>
     );
     expect(screen.getByText("Sold out")).toBeInTheDocument();
+  });
+
+  it("confirms additions and animates the cart", () => {
+    render(
+      <CartProvider>
+        <Header shopName="Cookie Corner" />
+        <ProductCard product={sampleProduct} />
+      </CartProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
+
+    expect(screen.getByRole("button", { name: "Added" })).toBeInTheDocument();
+    const cart = screen.getByRole("link", { name: "Cart, 1 item" });
+    expect(cart.querySelector(".cart-add-animation")).toBeInTheDocument();
   });
 });

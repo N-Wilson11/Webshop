@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useCart } from "./CartProvider";
 
 export function Header({ shopName }: { shopName: string }) {
-  const { totalItems } = useCart();
+  const { totalItems, cartAnimation } = useCart();
+  const cartLabel = `Cart, ${totalItems} ${totalItems === 1 ? "item" : "items"}`;
 
   return (
     <header className="bg-primary text-white shadow-md">
@@ -16,13 +17,18 @@ export function Header({ shopName }: { shopName: string }) {
           <Link href="/" className="hover:text-secondary">
             Shop
           </Link>
-          <Link href="/cart" className="relative hover:text-secondary">
-            Cart
-            {totalItems > 0 && (
-              <span className="absolute -right-3 -top-2 rounded-full bg-accent px-1.5 text-xs text-white">
-                {totalItems}
-              </span>
-            )}
+          <Link href="/cart" aria-label={cartLabel} className="hover:text-secondary">
+            <span
+              key={cartAnimation}
+              className={`relative inline-flex ${cartAnimation > 0 ? "cart-add-animation" : ""}`}
+            >
+              Cart
+              {totalItems > 0 && (
+                <span className="absolute -right-3 -top-2 rounded-full bg-accent px-1.5 text-xs text-white">
+                  {totalItems}
+                </span>
+              )}
+            </span>
           </Link>
           <Link href="/admin" className="hover:text-secondary">
             Admin
