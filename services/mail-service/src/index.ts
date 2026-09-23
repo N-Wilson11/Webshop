@@ -85,52 +85,12 @@ function getSenderEmail(from: string) {
   return from.match(/<([^>]+)>/)?.[1].trim() || from.trim();
 }
 
-function guessExtension(imageUrl: string, contentType: string | null) {
-  const fromContentType = contentType?.split("/")[1]?.split(";")[0];
-  if (fromContentType) return fromContentType;
-
-  const fromUrl = imageUrl.split(/[?#]/)[0].split(".").pop();
-  return fromUrl && fromUrl.length <= 5 ? fromUrl : "jpg";
-}
-
-async function fetchInlineImage(imageUrl: string | undefined, cid: string) {
-  const resolved = resolveImageUrl(imageUrl);
-  if (!resolved) return null;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-
-  try {
-    const response = await fetch(resolved, { signal: controller.signal });
-    if (!response.ok) return null;
-
-    const contentType = response.headers.get("content-type");
-    const content = Buffer.from(await response.arrayBuffer());
-
-    return {
-      cid,
-      filename: `${cid}.${guessExtension(resolved, contentType)}`,
-      content,
-      contentType: contentType || undefined
-    };
-  } catch (error) {
-    console.warn(`Unable to fetch order confirmation image from ${resolved}`, error);
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 export async function buildOrderConfirmationEmail(order: OrderConfirmation, senderName: string) {
-  const imageAttachments = await Promise.all(
-    order.items.map((item, index) => fetchInlineImage(item.imageUrl, `item-image-${index}`))
-  );
-
   const itemRows = order.items
-    .map((item, index) => {
-      const attachment = imageAttachments[index];
-      const imageCell = attachment
-        ? `<img src="cid:${attachment.cid}" alt="${escapeHtml(item.name)}" width="56" height="56" style="display: block; width: 56px; height: 56px; border-radius: 10px; object-fit: cover;" />`
+    .map((item) => {
+      const imageUrl = resolveImageUrl(item.imageUrl);
+      const imageCell = imageUrl
+        ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.name)}" width="56" height="56" style="display: block; width: 56px; height: 56px; border-radius: 10px; object-fit: cover;" />`
         : `<div style="width: 56px; height: 56px; border-radius: 10px; background-color: #fff2df; text-align: center; line-height: 56px; font-size: 24px;">🍪</div>`;
 
       return `<tr>
@@ -148,16 +108,12 @@ export async function buildOrderConfirmationEmail(order: OrderConfirmation, send
     })
     .join("");
   const total = formatPrice(order.totalPrice, order.currency);
-  const attachments = imageAttachments.filter(
-    (attachment): attachment is NonNullable<typeof attachment> => attachment !== null
-  );
 
   return {
     subject: `Order confirmed — ${senderName}`,
     text: `Hello ${order.name},\n\nThank you for your order!\n\n${order.items
       .map((item) => `${item.quantity} x ${item.name} — ${formatPrice(item.price * item.quantity, item.currency)}`)
       .join("\n")}\n\nTotal: ${total}\n\nWe are preparing your cookies now.\n\nWith love,\n${senderName}`,
-    attachments,
     html: `<!doctype html>
 <html lang="en">
   <body style="margin: 0; padding: 0; background-color: #fff8f0; color: #3a2618; font-family: Arial, Helvetica, sans-serif;">
@@ -245,8 +201,7 @@ export function createSmtpMailer(): SendOrderConfirmation {
       to: order.email,
       subject: email.subject,
       text: email.text,
-      html: email.html,
-      attachments: email.attachments
+      html: email.html
     });
   };
 }
@@ -276,10 +231,6 @@ export function createBrevoMailer(): SendOrderConfirmation {
         subject: email.subject,
         textContent: email.text,
         htmlContent: email.html,
-        attachment: email.attachments.map((attachment) => ({
-          name: attachment.filename,
-          content: attachment.content.toString("base64")
-        }))
       })
     });
 
