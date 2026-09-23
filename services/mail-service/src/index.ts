@@ -81,6 +81,10 @@ export function getSenderName(from: string) {
   return from.split("@")[0].trim();
 }
 
+function getSenderEmail(from: string) {
+  return from.match(/<([^>]+)>/)?.[1].trim() || from.trim();
+}
+
 function guessExtension(imageUrl: string, contentType: string | null) {
   const fromContentType = contentType?.split("/")[1]?.split(";")[0];
   if (fromContentType) return fromContentType;
@@ -247,6 +251,45 @@ export function createSmtpMailer(): SendOrderConfirmation {
   };
 }
 
+export function createBrevoMailer(): SendOrderConfirmation {
+  const apiKey = process.env.BREVO_API_KEY;
+  const from = process.env.MAIL_FROM;
+
+  if (!apiKey || !from) {
+    throw new Error("BREVO_API_KEY and MAIL_FROM must be configured");
+  }
+
+  const senderName = getSenderName(from);
+  const senderEmail = getSenderEmail(from);
+
+  return async (order) => {
+    const email = await buildOrderConfirmationEmail(order, senderName);
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey
+      },
+      body: JSON.stringify({
+        sender: { email: senderEmail, name: senderName },
+        to: [{ email: order.email, name: order.name }],
+        subject: email.subject,
+        textContent: email.text,
+        htmlContent: email.html,
+        attachment: email.attachments.map((attachment) => ({
+          name: attachment.filename,
+          content: attachment.content.toString("base64")
+        }))
+      })
+    });
+
+    if (!response.ok) {
+      const responseText = await response.text();
+      throw new Error(`Brevo email API returned ${response.status}: ${responseText}`);
+    }
+  };
+}
+
 export function createApp(sendOrderConfirmation: SendOrderConfirmation) {
   const app = express();
   app.use(cors());
@@ -274,7 +317,7 @@ export function createApp(sendOrderConfirmation: SendOrderConfirmation) {
 
 let mailer: SendOrderConfirmation | undefined;
 const app = createApp(async (order) => {
-  if (!mailer) mailer = createSmtpMailer();
+  if (!mailer) mailer = process.env.BREVO_API_KEY ? createBrevoMailer() : createSmtpMailer();
   await mailer(order);
 });
 export { app };

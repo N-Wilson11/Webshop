@@ -54,21 +54,21 @@ Available variables:
 - `NEXT_PUBLIC_PRODUCTS_API_URL`: products API URL used by the browser
 - `NEXT_PUBLIC_UPLOAD_API_URL`: upload API URL used by the browser
 - `UPLOAD_PUBLIC_URL`: public URL returned for uploaded files
-- `SMTP_URL`: SMTP connection URL used to deliver order confirmations
+- `BREVO_API_KEY`: Brevo Transactional Email API key used to deliver order confirmations over HTTPS
+- `SMTP_URL`: fallback SMTP connection URL used only when `BREVO_API_KEY` is not configured
 - `MAIL_FROM`: sender address displayed on order confirmations
 
 Reserved URL characters in the SMTP login or key (such as `@`, `:`, `/`, and `#`) must be
 percent-encoded in `SMTP_URL`.
 
-For Brevo, configuring the separate SMTP values avoids URL encoding:
+For deployed environments, use a Brevo Transactional Email API key:
 
 ```env
-SMTP_HOST=smtp-relay.brevo.com
-SMTP_PORT=587
-SMTP_USER=your-brevo-smtp-login@example.com
-SMTP_PASSWORD=your-brevo-smtp-key
+BREVO_API_KEY=your-brevo-api-key
 MAIL_FROM=Cookie Corner <your-verified-sender@example.com>
 ```
+
+When `BREVO_API_KEY` is unset, the service supports the existing separate SMTP variables as a fallback.
 
 ## Deploy services to Render
 
@@ -80,8 +80,7 @@ During setup, enter:
 
 - The **same** strong `ADMIN_TOKEN` for both the products and upload services. Use that token to
   sign in to the CMS.
-- Your Brevo SMTP login in `SMTP_USER`, SMTP key in `SMTP_PASSWORD`, and verified sender in
-  `MAIL_FROM`.
+- Your Brevo API key in `BREVO_API_KEY` and verified sender in `MAIL_FROM`.
 
 After Render deploys each service, copy its public URL. Add the following values to the Vercel
 project's Production environment variables, then redeploy the web project:

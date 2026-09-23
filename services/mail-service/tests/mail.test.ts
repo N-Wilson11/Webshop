@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
-import { createApp, getSenderName, buildOrderConfirmationEmail } from "../src/index";
+import { buildOrderConfirmationEmail, createApp, createBrevoMailer, getSenderName } from "../src/index";
 
 const order = {
   email: "customer@example.com",
@@ -31,6 +31,48 @@ describe("mail-service", () => {
   it("uses the display name from the configured sender", () => {
     expect(getSenderName("The Cookie Company <orders@example.com>")).toBe("The Cookie Company");
     expect(getSenderName("orders@example.com")).toBe("orders");
+  });
+
+  it("sends order confirmations through the Brevo API", async () => {
+    const previousApiKey = process.env.BREVO_API_KEY;
+    const previousFrom = process.env.MAIL_FROM;
+    process.env.BREVO_API_KEY = "test-api-key";
+    process.env.MAIL_FROM = "Cookie Corner <orders@example.com>";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
+    try {
+      await createBrevoMailer()(order);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.brevo.com/v3/smtp/email",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({ "api-key": "test-api-key" })
+        })
+      );
+      expect(JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body)).toMatchObject({
+        sender: { email: "orders@example.com", name: "Cookie Corner" },
+        to: [{ email: order.email, name: order.name }]
+      });
+    } finally {
+      process.env.BREVO_API_KEY = previousApiKey;
+      process.env.MAIL_FROM = previousFrom;
+    }
+  });
+
+  it("reports Brevo API failures", async () => {
+    const previousApiKey = process.env.BREVO_API_KEY;
+    const previousFrom = process.env.MAIL_FROM;
+    process.env.BREVO_API_KEY = "test-api-key";
+    process.env.MAIL_FROM = "orders@example.com";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 401, text: async () => "Unauthorized" }));
+
+    try {
+      await expect(createBrevoMailer()(order)).rejects.toThrow("Brevo email API returned 401: Unauthorized");
+    } finally {
+      process.env.BREVO_API_KEY = previousApiKey;
+      process.env.MAIL_FROM = previousFrom;
+    }
   });
 
   it("responds healthy", async () => {
