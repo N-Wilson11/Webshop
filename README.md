@@ -51,6 +51,8 @@ Copy `.env.example` to `.env` if you need to override the defaults:
 Available variables:
 
 - `ADMIN_TOKEN`: shared token used by the admin product and upload APIs
+- `SUPABASE_URL`: Supabase project URL used by the server to store orders
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service-role key used only by the server to store and list orders
 - `NEXT_PUBLIC_PRODUCTS_API_URL`: products API URL used by the browser
 - `NEXT_PUBLIC_UPLOAD_API_URL`: upload API URL used by the browser
 - `UPLOAD_PUBLIC_URL`: public URL returned for uploaded files
@@ -69,6 +71,18 @@ MAIL_FROM=Cookie Corner <your-verified-sender@example.com>
 ```
 
 When `BREVO_API_KEY` is unset, the service supports the existing separate SMTP variables as a fallback.
+
+## Store orders in Supabase
+
+1. Create a Supabase project and run
+   [`supabase/migrations/20260924_create_orders.sql`](supabase/migrations/20260924_create_orders.sql)
+   in its SQL Editor.
+2. In Vercel, add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `ADMIN_TOKEN` as Production
+   environment variables. `ADMIN_TOKEN` must match the token configured on the products service.
+3. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Do not create a `NEXT_PUBLIC_` version of it.
+
+Checkout saves an order only after its confirmation email was accepted by the mail service. Signed-in
+admins can view all saved orders at `/admin/orders`.
 
 ## Deploy services to Render
 

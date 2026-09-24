@@ -21,6 +21,17 @@ function authHeaders() {
   return { Authorization: `Bearer ${getAdminToken()}` };
 }
 
+export async function fetchOrdersAdmin() {
+  const res = await fetch("/api/admin/orders", {
+    headers: authHeaders(),
+    cache: "no-store"
+  });
+  if (!res.ok) {
+    throw new Error((await res.json()).error || "Failed to load orders");
+  }
+  return res.json();
+}
+
 export async function isTokenValid(): Promise<boolean> {
   // Validate the stored token by re-saving the current theme (a harmless admin write).
   const currentTheme = await (await fetch(`${PRODUCTS_API_PUBLIC}/settings/theme`)).json();
