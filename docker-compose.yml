@@ -44,12 +44,13 @@ services:
     restart: unless-stopped
     environment:
       PORT: 4003
-      SMTP_URL: ${SMTP_URL}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      MAIL_FROM: ${MAIL_FROM}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      SMTP_URL: ${SMTP_URL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
       # Always the in-network web service address; do not let a host .env value for
       # local (non-docker) development override this inside the compose network.
       PUBLIC_WEB_URL: http://web:3000
@@ -72,6 +73,9 @@ services:
     environment:
       PRODUCTS_API_URL: http://products-service:4001
       MAIL_SERVICE_URL: http://mail-service:4003
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
       NEXT_PUBLIC_PRODUCTS_API_URL: ${NEXT_PUBLIC_PRODUCTS_API_URL:-http://localhost:4001}
       NEXT_PUBLIC_UPLOAD_API_URL: ${NEXT_PUBLIC_UPLOAD_API_URL:-http://localhost:4002}
     ports:

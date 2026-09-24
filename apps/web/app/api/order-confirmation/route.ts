@@ -17,28 +17,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "A valid order is required." }, { status: 400 });
   }
 
+  let response: Response;
+
   try {
-    const response = await fetch(`${MAIL_SERVICE_URL}/order-confirmations`, {
+    response = await fetch(`${MAIL_SERVICE_URL}/order-confirmations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(order),
       cache: "no-store"
     });
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: "We could not send your confirmation email. Please try again." },
-        { status: 502 }
-      );
-    }
-
-    await saveOrder(order);
-    return NextResponse.json({ status: "sent" }, { status: 202 });
   } catch (error) {
-    console.error("Order confirmation processing failed", error);
+    console.error("Order confirmation mail service request failed", error);
     return NextResponse.json(
       { error: "We could not send your confirmation email. Please try again." },
       { status: 502 }
     );
   }
+
+  if (!response.ok) {
+    return NextResponse.json(
+      { error: "We could not send your confirmation email. Please try again." },
+      { status: 502 }
+    );
+  }
+
+  try {
+    await saveOrder(order);
+  } catch (error) {
+    console.error("Order could not be saved", error);
+    return NextResponse.json(
+      { error: "Your confirmation email was sent, but we could not save the order." },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ status: "sent" }, { status: 202 });
 }
