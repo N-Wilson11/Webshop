@@ -5,7 +5,7 @@ const order = {
   name: "Cookie Customer",
   email: "customer@example.com",
   address: "Cookie Street 1",
-  items: [{ name: "Chocolate Chip", quantity: 2, price: 2.5, currency: "EUR" }],
+  items: [{ id: "chocolate-chip", name: "Chocolate Chip", quantity: 2, price: 2.5, currency: "EUR" }],
   totalPrice: 5,
   currency: "EUR"
 };

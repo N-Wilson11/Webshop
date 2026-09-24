@@ -6,22 +6,10 @@ import { formatPrice } from "@/lib/api";
 
 export default function CheckoutPage() {
   const { items, totalPrice, clear } = useCart();
-  const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({ name: "", email: "", address: "" });
-
-  if (submitted) {
-    return (
-      <div className="mx-auto max-w-lg text-center">
-        <h1 className="font-display text-3xl font-bold text-ink">Thank you! 🍪</h1>
-        <p className="mt-3 text-ink/70">
-          Your order has been placed. This is a demo checkout — plug in a real payment
-          provider (e.g. Stripe) for production use.
-        </p>
-      </div>
-    );
-  }
+  const [paymentMethod, setPaymentMethod] = useState("test");
 
   if (items.length === 0) {
     return <p className="text-center text-ink/70">Your cart is empty. Add some cookies first!</p>;
@@ -38,7 +26,7 @@ export default function CheckoutPage() {
           setIsSubmitting(true);
 
           try {
-            const response = await fetch("/api/order-confirmation", {
+            const response = await fetch("/api/payments/mollie", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -53,14 +41,18 @@ export default function CheckoutPage() {
 
             if (!response.ok) {
               const data = (await response.json()) as { error?: string };
-              throw new Error(data.error || "We could not send your confirmation email.");
+              throw new Error(data.error || "We could not start the payment.");
             }
 
-            setSubmitted(true);
-            clear();
+            const data = (await response.json()) as { checkoutUrl?: string };
+            if (!data.checkoutUrl) {
+              throw new Error("Mollie did not provide a checkout URL.");
+            }
+
+            window.location.assign(data.checkoutUrl);
           } catch (error) {
             setError(
-              error instanceof Error ? error.message : "We could not send your confirmation email."
+              error instanceof Error ? error.message : "We could not start the payment."
             );
           } finally {
             setIsSubmitting(false);
@@ -90,6 +82,23 @@ export default function CheckoutPage() {
           className="rounded-lg border border-black/10 px-4 py-2"
           rows={3}
         />
+        <fieldset className="rounded-lg border border-black/10 p-4">
+          <legend className="px-1 text-sm font-semibold text-ink">Payment method</legend>
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              checked={paymentMethod === "test"}
+              name="payment-method"
+              type="radio"
+              value="test"
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="mt-1"
+            />
+            <span>
+              <span className="block font-medium text-ink">Test payment</span>
+              <span className="block text-sm text-ink/60">Simulates a payment. No money is charged.</span>
+            </span>
+          </label>
+        </fieldset>
         <div className="flex items-center justify-between border-t border-black/10 pt-4">
           <span className="font-semibold text-ink">Total due</span>
           <span className="text-xl font-bold text-primary">
@@ -102,7 +111,7 @@ export default function CheckoutPage() {
           disabled={isSubmitting}
           className="rounded-full bg-primary px-6 py-3 font-semibold text-white transition hover:bg-primary/90"
         >
-          {isSubmitting ? "Sending confirmation..." : "Place order"}
+          {isSubmitting ? "Processing order..." : "Complete order"}
         </button>
       </form>
     </div>

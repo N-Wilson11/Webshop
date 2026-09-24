@@ -54,6 +54,9 @@ Available variables:
 - `SUPABASE_URL`: Supabase project URL used by the server to store orders
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service-role key used only by the server to store and list orders
 - `DISCORD_ORDER_WEBHOOK_URL`: Discord webhook URL used for new-order notifications
+- `MOLLIE_API_KEY`: Mollie Test API key used to create checkout payments
+- `APP_URL`: public storefront URL used by Mollie for the payment return and webhook
+- `PAYMENT_PROVIDER`: `mock` (default) for local test payments or `mollie` for Mollie Test Mode
 - `NEXT_PUBLIC_PRODUCTS_API_URL`: products API URL used by the browser
 - `NEXT_PUBLIC_UPLOAD_API_URL`: upload API URL used by the browser
 - `UPLOAD_PUBLIC_URL`: public URL returned for uploaded files
@@ -78,15 +81,30 @@ When `BREVO_API_KEY` is unset, the service supports the existing separate SMTP v
 1. Create a Supabase project and run
    [`supabase/migrations/20260924_create_orders.sql`](supabase/migrations/20260924_create_orders.sql)
    in its SQL Editor.
-2. In Vercel, add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_TOKEN`, and
+2. Run [`supabase/migrations/20260924_add_mollie_payment_status.sql`](supabase/migrations/20260924_add_mollie_payment_status.sql)
+   in the Supabase SQL Editor.
+3. In Vercel, add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_TOKEN`, and
    `DISCORD_ORDER_WEBHOOK_URL` as Production environment variables. `ADMIN_TOKEN` must match the
    token configured on the products service.
-3. Keep `SUPABASE_SERVICE_ROLE_KEY` and `DISCORD_ORDER_WEBHOOK_URL` server-only. Do not create
+4. Keep `SUPABASE_SERVICE_ROLE_KEY` and `DISCORD_ORDER_WEBHOOK_URL` server-only. Do not create
    `NEXT_PUBLIC_` versions of them.
 
-Checkout saves an order only after its confirmation email was accepted by the mail service. It then
-stores the order and notifies the admin through Discord. A failed Discord alert is logged but does
-not undo a completed order. Signed-in admins can view all saved orders at `/admin/orders`.
+Checkout initially stores an open order while the customer pays in Mollie. After Mollie confirms
+the payment, the order is marked as paid, the customer receives its confirmation email, and the
+admin is notified through Discord. A failed Discord alert is logged but does not undo a paid order.
+Signed-in admins can view all paid orders at `/admin/orders`.
+
+## Test payments
+
+`PAYMENT_PROVIDER=mock` is the default and requires no payment-provider account. It simulates a
+paid checkout and runs the same paid-order, email, and Discord flow, but must never be used for
+real sales.
+
+To use Mollie Test Mode later, set `PAYMENT_PROVIDER=mollie`, then add a **Test API key** as
+`MOLLIE_API_KEY` and set `APP_URL` to the public Vercel URL. Test keys begin with `test_` and do
+not charge money. Mollie's webhook needs a publicly reachable URL, so local Docker URLs and
+`localhost` cannot receive Mollie webhooks. Orders, confirmation emails, and Discord notifications
+are created only after Mollie reports the payment as paid.
 
 ## Product images in order emails
 

@@ -1,4 +1,5 @@
 export type OrderItem = {
+  id: string;
   name: string;
   quantity: number;
   price: number;
@@ -18,4 +19,5 @@ export type OrderSubmission = {
 export type AdminOrder = OrderSubmission & {
   id: string;
   createdAt: string;
+  paymentStatus: string;
 };
