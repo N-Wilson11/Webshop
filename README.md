@@ -84,6 +84,13 @@ When `BREVO_API_KEY` is unset, the service supports the existing separate SMTP v
 Checkout saves an order only after its confirmation email was accepted by the mail service. Signed-in
 admins can view all saved orders at `/admin/orders`.
 
+## Product images in order emails
+
+Set `PUBLIC_WEB_URL` to the public Vercel URL of the storefront in the mail-service environment.
+Email clients load product images from this URL, so `localhost` and Docker service names such as
+`http://web:3000` only work inside Docker and cannot be displayed by recipients. For local email
+testing, use a public tunnel URL or the deployed Vercel URL.
+
 ## Deploy services to Render
 
 The included [`render.yaml`](render.yaml) Blueprint creates the products, upload, and mail services
