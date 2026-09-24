@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminGuard } from "@/components/AdminGuard";
 import { fetchOrdersAdmin } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/api";
@@ -10,6 +10,9 @@ function OrdersList() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("newest");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     async function load() {
@@ -25,18 +28,90 @@ function OrdersList() {
     load();
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [query, sort]);
+
+  const filteredOrders = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const matchingOrders = normalizedQuery
+      ? orders.filter(
+          (order) =>
+            order.name.toLowerCase().includes(normalizedQuery) ||
+            order.email.toLowerCase().includes(normalizedQuery)
+        )
+      : orders;
+
+    return [...matchingOrders].sort((first, second) => {
+      switch (sort) {
+        case "oldest":
+          return new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime();
+        case "name-asc":
+          return first.name.localeCompare(second.name);
+        case "name-desc":
+          return second.name.localeCompare(first.name);
+        case "total-asc":
+          return first.totalPrice - second.totalPrice;
+        case "total-desc":
+          return second.totalPrice - first.totalPrice;
+        default:
+          return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
+      }
+    });
+  }, [orders, query, sort]);
+
+  const ordersPerPage = 4;
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ordersPerPage));
+  const currentPage = Math.min(page, totalPages);
+  const visibleOrders = filteredOrders.slice(
+    (currentPage - 1) * ordersPerPage,
+    currentPage * ordersPerPage
+  );
+
   return (
     <div>
-      <h1 className="mb-6 font-display text-3xl font-bold text-ink">Orders</h1>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <h1 className="font-display text-3xl font-bold text-ink">Orders</h1>
+        <div className="flex flex-wrap gap-3">
+          <label className="sr-only" htmlFor="order-search">
+            Search orders
+          </label>
+          <input
+            id="order-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search name or email"
+            className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm"
+          />
+          <label className="sr-only" htmlFor="order-sort">
+            Sort orders
+          </label>
+          <select
+            id="order-sort"
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+            className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name-asc">Customer name A-Z</option>
+            <option value="name-desc">Customer name Z-A</option>
+            <option value="total-asc">Total low to high</option>
+            <option value="total-desc">Total high to low</option>
+          </select>
+        </div>
+      </div>
       {loading ? (
         <p className="text-ink/60">Loading…</p>
       ) : error ? (
         <p className="text-red-700">{error}</p>
       ) : orders.length === 0 ? (
         <p className="text-ink/60">No orders yet.</p>
+      ) : filteredOrders.length === 0 ? (
+        <p className="text-ink/60">No orders match your search.</p>
       ) : (
         <div className="space-y-4">
-          {orders.map((order) => (
+          {visibleOrders.map((order) => (
             <article key={order.id} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-black/5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -65,6 +140,27 @@ function OrdersList() {
               </ul>
             </article>
           ))}
+          {totalPages > 1 && (
+            <nav className="flex items-center justify-center gap-3 pt-2" aria-label="Order pagination">
+              <button
+                onClick={() => setPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="rounded-full border border-black/10 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-ink/60">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="rounded-full border border-black/10 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </nav>
+          )}
         </div>
       )}
     </div>
