@@ -44,6 +44,7 @@ export default function CheckoutPage() {
               body: JSON.stringify({
                 email: form.email,
                 name: form.name,
+                address: form.address,
                 items,
                 totalPrice,
                 currency: items[0]?.currency || "EUR"

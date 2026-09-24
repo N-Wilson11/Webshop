@@ -52,6 +52,9 @@ export function AdminGuard({ children }: { children: ReactNode }) {
           <Link href="/admin/theme" className="hover:underline">
             Theme
           </Link>
+          <Link href="/admin/orders" className="hover:underline">
+            Orders
+          </Link>
         </nav>
         <button
           onClick={() => {
