@@ -1,4 +1,4 @@
-create table public.orders (
+create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   customer_name text not null check (char_length(customer_name) > 0),
