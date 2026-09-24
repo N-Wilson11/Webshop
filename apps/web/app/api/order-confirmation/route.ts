@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sendAdminOrderDiscordNotification } from "@/lib/admin-discord";
 import { parseOrderSubmission, saveOrder } from "@/lib/orders";
 
 const MAIL_SERVICE_URL = process.env.MAIL_SERVICE_URL || "http://localhost:4003";
@@ -49,6 +50,12 @@ export async function POST(request: Request) {
       { error: "Your confirmation email was sent, but we could not save the order." },
       { status: 500 }
     );
+  }
+
+  try {
+    await sendAdminOrderDiscordNotification(order);
+  } catch (error) {
+    console.error("Admin order Discord notification failed", error);
   }
 
   return NextResponse.json({ status: "sent" }, { status: 202 });

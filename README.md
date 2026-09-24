@@ -53,6 +53,7 @@ Available variables:
 - `ADMIN_TOKEN`: shared token used by the admin product and upload APIs
 - `SUPABASE_URL`: Supabase project URL used by the server to store orders
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service-role key used only by the server to store and list orders
+- `DISCORD_ORDER_WEBHOOK_URL`: Discord webhook URL used for new-order notifications
 - `NEXT_PUBLIC_PRODUCTS_API_URL`: products API URL used by the browser
 - `NEXT_PUBLIC_UPLOAD_API_URL`: upload API URL used by the browser
 - `UPLOAD_PUBLIC_URL`: public URL returned for uploaded files
@@ -77,12 +78,15 @@ When `BREVO_API_KEY` is unset, the service supports the existing separate SMTP v
 1. Create a Supabase project and run
    [`supabase/migrations/20260924_create_orders.sql`](supabase/migrations/20260924_create_orders.sql)
    in its SQL Editor.
-2. In Vercel, add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `ADMIN_TOKEN` as Production
-   environment variables. `ADMIN_TOKEN` must match the token configured on the products service.
-3. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Do not create a `NEXT_PUBLIC_` version of it.
+2. In Vercel, add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_TOKEN`, and
+   `DISCORD_ORDER_WEBHOOK_URL` as Production environment variables. `ADMIN_TOKEN` must match the
+   token configured on the products service.
+3. Keep `SUPABASE_SERVICE_ROLE_KEY` and `DISCORD_ORDER_WEBHOOK_URL` server-only. Do not create
+   `NEXT_PUBLIC_` versions of them.
 
-Checkout saves an order only after its confirmation email was accepted by the mail service. Signed-in
-admins can view all saved orders at `/admin/orders`.
+Checkout saves an order only after its confirmation email was accepted by the mail service. It then
+stores the order and notifies the admin through Discord. A failed Discord alert is logged but does
+not undo a completed order. Signed-in admins can view all saved orders at `/admin/orders`.
 
 ## Product images in order emails
 
