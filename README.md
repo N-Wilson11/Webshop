@@ -4,6 +4,8 @@ A full-stack cookie webshop built with Next.js and three Node.js microservices.
 
 **Live demo:** [webshop-web-six.vercel.app](https://webshop-web-six.vercel.app/)
 
+(Cold start takes a few seconds. Once all services are running it's fast.)
+
 ## Features
 
 - Product catalogue, shopping cart, and checkout flow
