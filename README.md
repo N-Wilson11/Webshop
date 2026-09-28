@@ -14,6 +14,7 @@ A full-stack cookie webshop built with Next.js and three Node.js microservices.
 - Docker Compose setup for local development
 - Render Blueprint for deploying the backend services
 - GitHub Actions checks for tests, linting, and production builds
+- AI store assistant grounded only in the live shop catalogue and theme
 
 ## Run with Docker
 
@@ -62,6 +63,10 @@ Available variables:
 - `BREVO_API_KEY`: Brevo Transactional Email API key used to deliver order confirmations over HTTPS
 - `SMTP_URL`: fallback SMTP connection URL used only when `BREVO_API_KEY` is not configured
 - `MAIL_FROM`: sender address displayed on order confirmations
+- `GEMINI_API_KEY`: server-only Google Gemini key for the store assistant
+- `GEMINI_CHAT_MODEL`: optional Gemini chat model (defaults to `gemini-3.8-flash`)
+- `OPENAI_API_KEY`: optional server-only OpenAI fallback key for the store assistant
+- `OPENAI_CHAT_MODEL`: optional OpenAI fallback model (defaults to `gpt-4o-mini`)
 
 Reserved URL characters in the SMTP login or key (such as `@`, `:`, `/`, and `#`) must be
 percent-encoded in `SMTP_URL`.
@@ -74,6 +79,19 @@ MAIL_FROM=Cookie Corner <your-verified-sender@example.com>
 ```
 
 When `BREVO_API_KEY` is unset, the service supports the existing separate SMTP variables as a fallback.
+
+## Store assistant
+
+The floating **Ask us** button sends questions to a server-side Gemini integration. Each request
+fetches the current shop name, tagline, and product catalogue and instructs the model to answer
+only from that data. Questions that are not supported by the website content are answered as
+unknown; the browser never receives the provider key. If `GEMINI_API_KEY` is not set, the app can
+use the optional OpenAI fallback.
+
+For `npm run dev`, add `GEMINI_API_KEY` to `apps/web/.env.local` and restart the Next.js server.
+For Docker Compose, add it to the repository-root `.env` and recreate the web container with
+`docker compose up -d --build web`. In Vercel, add it as a Production environment variable and
+redeploy. Optionally set `GEMINI_CHAT_MODEL`; it defaults to `gemini-3.8-flash`.
 
 ## Store orders in Supabase
 
