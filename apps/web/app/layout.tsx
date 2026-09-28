@@ -4,6 +4,7 @@ import { getTheme } from "@/lib/api";
 import { CartProvider } from "@/components/CartProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { Chatbot } from "@/components/Chatbot";
 
 export const metadata: Metadata = {
   title: "Cookie Corner",
@@ -33,6 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Header shopName={theme.shopName} />
           <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
           <Footer shopName={theme.shopName} tagline={theme.tagline} />
+          <Chatbot shopName={theme.shopName} />
         </CartProvider>
       </body>
     </html>
