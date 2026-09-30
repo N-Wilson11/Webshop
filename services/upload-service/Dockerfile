@@ -12,6 +12,4 @@ ENV NODE_ENV=production
 ENV PORT=4002
 EXPOSE 4002
 
-VOLUME ["/app/uploads"]
-
 CMD ["node", "dist/index.js"]

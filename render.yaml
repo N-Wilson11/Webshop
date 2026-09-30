@@ -32,6 +32,10 @@ services:
         value: production
       - key: ADMIN_TOKEN
         sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
 
   - type: web
     name: webshop-mail-service
