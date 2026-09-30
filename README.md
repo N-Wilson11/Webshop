@@ -42,9 +42,11 @@ Stop the application:
 docker compose down
 ```
 
-Product data and uploaded files are stored in Docker volumes and remain available after containers are stopped.
-The default product images are versioned static assets in `apps/web/public/images`; seeded product
-records use `/images/<filename>` URLs served by the web app.
+Uploaded files are stored in a Docker volume and remain available after containers are stopped.
+Product data and theme settings are stored in Supabase. Before starting Docker for the first time,
+configure `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env` and run the Supabase migrations
+described below. The default product images are versioned static assets in `apps/web/public/images`;
+seeded product records use `/images/<filename>` URLs served by the web app.
 
 ## Configuration
 
@@ -54,8 +56,8 @@ Copy `.env.example` to `.env` if you need to override the defaults:
 Available variables:
 
 - `ADMIN_TOKEN`: shared token used by the admin product and upload APIs
-- `SUPABASE_URL`: Supabase project URL used by the server to store orders
-- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service-role key used only by the server to store and list orders
+- `SUPABASE_URL`: Supabase project URL used by server services to store orders, products, and theme settings
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service-role key used only by server services to access Supabase
 - `DISCORD_ORDER_WEBHOOK_URL`: Discord webhook URL used for new-order notifications
 - `NEXT_PUBLIC_PRODUCTS_API_URL`: products API URL used by the browser
 - `NEXT_PUBLIC_UPLOAD_API_URL`: upload API URL used by the browser
@@ -93,11 +95,11 @@ For Docker Compose, add it to the repository-root `.env` and recreate the web co
 `docker compose up -d --build web`. In Vercel, add it as a Production environment variable and
 redeploy. Optionally set `GEMINI_CHAT_MODEL`; it defaults to `gemini-3.8-flash`.
 
-## Store orders in Supabase
+## Store orders and products in Supabase
 
-1. Create a Supabase project and run
-   [`supabase/migrations/20260924_create_orders.sql`](supabase/migrations/20260924_create_orders.sql)
-   in its SQL Editor.
+1. Create a Supabase project and run the migrations in [`supabase/migrations`](supabase/migrations)
+   in the SQL Editor, beginning with `20260924_create_orders.sql` and then
+   `20260930_create_products_and_store_settings.sql`.
 2. In Vercel, add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_TOKEN`, and
    `DISCORD_ORDER_WEBHOOK_URL` as Production environment variables. `ADMIN_TOKEN` must match the
    token configured on the products service.
@@ -106,7 +108,9 @@ redeploy. Optionally set `GEMINI_CHAT_MODEL`; it defaults to `gemini-3.8-flash`.
 
 Checkout saves an order only after its confirmation email was accepted by the mail service. It then
 stores the order and notifies the admin through Discord. A failed Discord alert is logged but does
-not undo a completed order. Signed-in admins can view all saved orders at `/admin/orders`.
+not undo a completed order. Signed-in admins can view all saved orders at `/admin/orders`. Product
+creation, edits, deletion, image URLs, stock, category, and theme settings are also stored in
+Supabase, so they persist across products-service restarts and deployments.
 
 ## Product images in order emails
 
@@ -137,8 +141,8 @@ NEXT_PUBLIC_UPLOAD_API_URL=https://your-upload-service.onrender.com
 MAIL_SERVICE_URL=https://your-mail-service.onrender.com
 ```
 
-Render free services spin down after inactivity and have ephemeral storage. Product edits and
-uploaded images can be lost after a redeploy or restart; use persistent storage for production.
+Render free services spin down after inactivity. Product edits are stored in Supabase and survive
+restarts; uploaded image files still require persistent storage for production.
 
 ## Deploy the web app to Vercel
 
