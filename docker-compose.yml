@@ -7,9 +7,8 @@ services:
     environment:
       PORT: 4001
       ADMIN_TOKEN: ${ADMIN_TOKEN:-admin-secret}
-      DATABASE_PATH: /app/data/products.json
-    volumes:
-      - products-data:/app/data
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
     ports:
       - "4001:4001"
     healthcheck:
@@ -90,5 +89,4 @@ services:
         condition: service_healthy
 
 volumes:
-  products-data:
   upload-data:
