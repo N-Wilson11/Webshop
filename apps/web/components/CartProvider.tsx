@@ -9,6 +9,7 @@ export type CartItem = {
   price: number;
   currency: string;
   imageUrl: string;
+  stock: number;
   quantity: number;
 };
 
@@ -53,7 +54,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const existing = prev.find((i) => i.id === product.id);
       if (existing) {
         return prev.map((i) =>
-          i.id === product.id ? { ...i, quantity: i.quantity + quantity } : i
+          i.id === product.id
+            ? { ...i, stock: product.stock, quantity: Math.min(i.quantity + quantity, product.stock) }
+            : i
         );
       }
       return [
@@ -64,7 +67,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           price: product.price,
           currency: product.currency,
           imageUrl: product.imageUrl,
-          quantity
+          stock: product.stock,
+          quantity: Math.min(quantity, product.stock)
         }
       ];
     });
@@ -76,7 +80,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   function updateQuantity(id: string, quantity: number) {
     if (quantity <= 0) return removeItem(id);
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity } : i)));
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const stock = Number.isInteger(item.stock) ? item.stock : quantity;
+        return { ...item, quantity: Math.min(quantity, stock) };
+      })
+    );
   }
 
   function clear() {

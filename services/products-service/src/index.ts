@@ -14,6 +14,18 @@ app.get("/health", (_req, res) => res.json({ status: "ok", service: "products-se
 app.use("/products", productsRouter);
 app.use("/settings", settingsRouter);
 
+app.use(
+  (
+    error: Error,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction
+  ) => {
+    console.error("Unhandled products-service error", error);
+    res.status(500).json({ error: "The products service could not process the request." });
+  }
+);
+
 if (require.main === module) {
   const PORT = process.env.PORT || 4001;
   app.listen(PORT, () => {

@@ -61,6 +61,24 @@ describe("products-service", () => {
     expect(res.status).toBe(404);
   });
 
+  it("reserves stock atomically and rejects quantities that are unavailable", async () => {
+    const reserve = await request(app)
+      .post("/products/reserve-stock")
+      .set("Authorization", `Bearer ${ADMIN_TOKEN}`)
+      .send({ items: [{ id: "choc-chip", quantity: 2 }] });
+    expect(reserve.status).toBe(204);
+
+    const product = await request(app).get("/products/choc-chip");
+    expect(product.body.stock).toBe(48);
+
+    const unavailable = await request(app)
+      .post("/products/reserve-stock")
+      .set("Authorization", `Bearer ${ADMIN_TOKEN}`)
+      .send({ items: [{ id: "choc-chip", quantity: 49 }] });
+    expect(unavailable.status).toBe(409);
+    expect(unavailable.body.error).toMatch(/no longer available/i);
+  });
+
   it("gets and updates theme settings", async () => {
     const get = await request(app).get("/settings/theme");
     expect(get.status).toBe(200);
