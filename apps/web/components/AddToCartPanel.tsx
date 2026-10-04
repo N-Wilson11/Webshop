@@ -6,7 +6,7 @@ import { formatPrice, type Product } from "@/lib/api";
 import { useCart } from "@/components/CartProvider";
 
 export function AddToCartPanel({ product }: { product: Product }) {
-  const { addItem, items } = useCart();
+  const { addItem, iconUrl, items } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -31,7 +31,7 @@ export function AddToCartPanel({ product }: { product: Product }) {
         {product.imageUrl ? (
           <Image src={product.imageUrl} alt={product.name} fill className="object-cover" unoptimized />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-8xl">🍪</div>
+          <Image src={iconUrl} alt="" fill className="object-contain p-12" unoptimized />
         )}
       </div>
       <h1 className="font-display text-3xl font-bold text-ink">{product.name}</h1>

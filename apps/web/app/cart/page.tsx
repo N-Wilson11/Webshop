@@ -6,7 +6,7 @@ import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/api";
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, totalPrice } = useCart();
+  const { items, removeItem, updateQuantity, totalPrice, iconUrl } = useCart();
 
   if (items.length === 0) {
     return (
@@ -32,7 +32,7 @@ export default function CartPage() {
               {item.imageUrl ? (
                 <Image src={item.imageUrl} alt={item.name} fill className="object-cover" unoptimized />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-2xl">🍪</div>
+                <Image src={iconUrl} alt="" fill className="object-contain p-3" unoptimized />
               )}
             </div>
             <div className="flex-1">

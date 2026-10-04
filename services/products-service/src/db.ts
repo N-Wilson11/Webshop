@@ -26,6 +26,7 @@ export class InsufficientStockError extends Error {
 export type Theme = {
   shopName: string;
   tagline: string;
+  iconUrl: string;
   colors: {
     primary: string;
     secondary: string;
@@ -35,9 +36,16 @@ export type Theme = {
   };
 };
 
+export type ThemeHistoryEntry = {
+  id: number;
+  theme: Theme;
+  createdAt: string;
+};
+
 type Data = {
   products: Product[];
   theme: Theme;
+  themeHistory: ThemeHistoryEntry[];
 };
 
 type SupabaseProduct = {
@@ -57,6 +65,7 @@ type SupabaseProduct = {
 const defaultTheme: Theme = {
   shopName: "Cookie Corner",
   tagline: "Freshly baked happiness, delivered to your door.",
+  iconUrl: "/icon.svg",
   colors: {
     primary: "#8B5E3C",
     secondary: "#F4B942",
@@ -65,6 +74,15 @@ const defaultTheme: Theme = {
     text: "#3A2618"
   }
 };
+
+function normalizeTheme(theme: Partial<Theme>): Theme {
+  return {
+    ...defaultTheme,
+    ...theme,
+    iconUrl: typeof theme.iconUrl === "string" && theme.iconUrl ? theme.iconUrl : defaultTheme.iconUrl,
+    colors: { ...defaultTheme.colors, ...theme.colors }
+  };
+}
 
 function seedProducts(): Product[] {
   const now = new Date().toISOString();
@@ -129,7 +147,7 @@ let memoryData: Data | null = null;
 
 function getMemoryData(): Data {
   if (!memoryData) {
-    memoryData = { products: seedProducts(), theme: defaultTheme };
+    memoryData = { products: seedProducts(), theme: defaultTheme, themeHistory: [] };
   }
   return memoryData;
 }
@@ -379,30 +397,76 @@ export const store = {
   },
 
   async getTheme(): Promise<Theme> {
-    if (isMemory) return getMemoryData().theme;
+    if (isMemory) return normalizeTheme(getMemoryData().theme);
 
     const settings = await supabaseRequest<Array<{ theme: Theme }>>(
       "store_settings?select=theme&id=eq.1&limit=1"
     );
     if (!settings[0]) throw new Error("Supabase store settings are not initialized");
-    return settings[0].theme;
+    return normalizeTheme(settings[0].theme);
+  },
+
+  async getThemeHistory(): Promise<ThemeHistoryEntry[]> {
+    if (isMemory) return getMemoryData().themeHistory;
+
+    const history = await supabaseRequest<Array<{ id: number; theme: Theme; created_at: string }>>(
+      "theme_history?select=id,theme,created_at&order=created_at.desc,id.desc&limit=5"
+    );
+    return history.map((entry) => ({
+      id: entry.id,
+      theme: normalizeTheme(entry.theme),
+      createdAt: entry.created_at
+    }));
   },
 
   async setTheme(theme: Theme): Promise<Theme> {
+    const normalizedTheme = normalizeTheme(theme);
     if (isMemory) {
-      getMemoryData().theme = theme;
-      return theme;
+      const data = getMemoryData();
+      if (JSON.stringify(data.theme) !== JSON.stringify(normalizedTheme)) {
+        data.themeHistory = [
+          {
+            id: Date.now(),
+            theme: data.theme,
+            createdAt: new Date().toISOString()
+          },
+          ...data.themeHistory
+        ].slice(0, 5);
+      }
+      data.theme = normalizedTheme;
+      return normalizedTheme;
     }
 
-    const settings = await supabaseRequest<Array<{ theme: Theme }>>("store_settings?id=eq.1", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Prefer: "return=representation"
-      },
-      body: JSON.stringify({ theme })
+    return supabaseRequest<Theme>("rpc/set_store_theme", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ p_theme: normalizedTheme })
     });
-    if (!settings[0]) throw new Error("Supabase store settings are not initialized");
-    return settings[0].theme;
+  },
+
+  async restoreTheme(historyId: number): Promise<Theme | undefined> {
+    if (isMemory) {
+      const data = getMemoryData();
+      const entry = data.themeHistory.find((item) => item.id === historyId);
+      if (!entry) return undefined;
+
+      data.themeHistory = [
+        {
+          id: Date.now(),
+          theme: data.theme,
+          createdAt: new Date().toISOString()
+        },
+        ...data.themeHistory.filter((item) => item.id !== historyId)
+      ].slice(0, 5);
+      data.theme = normalizeTheme(entry.theme);
+      return data.theme;
+    }
+
+    const theme = await supabaseRequest<Theme | null>("rpc/restore_store_theme", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ p_history_id: historyId })
+    });
+    return theme ? normalizeTheme(theme) : undefined;
   }
 };

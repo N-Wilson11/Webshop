@@ -7,7 +7,7 @@ import { formatPrice, type Product } from "@/lib/api";
 import { useCart } from "./CartProvider";
 
 export function ProductCard({ product }: { product: Product }) {
-  const { addItem, items } = useCart();
+  const { addItem, iconUrl, items } = useCart();
   const [added, setAdded] = useState(false);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quantityInCart = items.find((i) => i.id === product.id)?.quantity ?? 0;
@@ -39,7 +39,7 @@ export function ProductCard({ product }: { product: Product }) {
               unoptimized
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-5xl">🍪</div>
+            <Image src={iconUrl} alt="" fill className="object-contain p-8" unoptimized />
           )}
           {product.featured && (
             <span className="absolute left-2 top-2 rounded-full bg-accent px-2 py-1 text-xs font-semibold text-white">
