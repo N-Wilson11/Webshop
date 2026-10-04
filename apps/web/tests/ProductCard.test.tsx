@@ -84,6 +84,6 @@ describe("ProductCard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
 
-    expect(screen.getByRole("button", { name: "No more in stock" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Sold out" })).toBeDisabled();
   });
 });
