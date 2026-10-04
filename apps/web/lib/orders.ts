@@ -62,6 +62,8 @@ export function parseOrderSubmission(value: unknown): OrderSubmission | null {
     !items.every(
       (item) =>
         item &&
+        typeof item.id === "string" &&
+        item.id.trim().length > 0 &&
         typeof item.name === "string" &&
         Number.isInteger(item.quantity) &&
         item.quantity > 0 &&

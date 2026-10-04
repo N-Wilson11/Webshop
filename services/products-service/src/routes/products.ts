@@ -1,8 +1,27 @@
 import { Router } from "express";
-import { store } from "../db";
+import { InsufficientStockError, type StockReservationItem, store } from "../db";
 import { requireAdmin } from "../middleware/auth";
 
 export const productsRouter = Router();
+
+function parseStockReservation(value: unknown): StockReservationItem[] | null {
+  if (!value || typeof value !== "object") return null;
+
+  const items = (value as { items?: unknown }).items;
+  if (!Array.isArray(items) || items.length === 0) return null;
+
+  const reservation = items as StockReservationItem[];
+  return reservation.every(
+    (item) =>
+      item &&
+      typeof item.id === "string" &&
+      item.id.length > 0 &&
+      Number.isInteger(item.quantity) &&
+      item.quantity > 0
+  )
+    ? reservation
+    : null;
+}
 
 // GET /products - list all, optional ?category= filter
 productsRouter.get("/", async (req, res, next) => {
@@ -20,6 +39,33 @@ productsRouter.get("/:id", async (req, res, next) => {
     const product = await store.getProduct(req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found" });
     res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productsRouter.post("/reserve-stock", requireAdmin, async (req, res, next) => {
+  const items = parseStockReservation(req.body);
+  if (!items) return res.status(400).json({ error: "Valid product quantities are required." });
+
+  try {
+    await store.reserveStock(items);
+    res.status(204).send();
+  } catch (error) {
+    if (error instanceof InsufficientStockError) {
+      return res.status(409).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
+productsRouter.post("/release-stock", requireAdmin, async (req, res, next) => {
+  const items = parseStockReservation(req.body);
+  if (!items) return res.status(400).json({ error: "Valid product quantities are required." });
+
+  try {
+    await store.releaseStock(items);
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

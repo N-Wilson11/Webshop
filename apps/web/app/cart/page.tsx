@@ -42,6 +42,7 @@ export default function CartPage() {
             <input
               type="number"
               min={1}
+              max={item.stock}
               value={item.quantity}
               onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
               className="w-16 rounded-lg border border-black/10 px-2 py-1"

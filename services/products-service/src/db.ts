@@ -12,6 +12,17 @@ export type Product = {
   updatedAt: string;
 };
 
+export type StockReservationItem = {
+  id: string;
+  quantity: number;
+};
+
+export class InsufficientStockError extends Error {
+  constructor() {
+    super("One or more products are no longer available in the requested quantity.");
+  }
+}
+
 export type Theme = {
   shopName: string;
   tagline: string;
@@ -300,6 +311,71 @@ export const store = {
       }
     );
     return products.length > 0;
+  },
+
+  async reserveStock(items: StockReservationItem[]): Promise<void> {
+    if (isMemory) {
+      const data = getMemoryData();
+      const quantities = new Map<string, number>();
+      for (const item of items) {
+        quantities.set(item.id, (quantities.get(item.id) || 0) + item.quantity);
+      }
+
+      for (const [id, quantity] of quantities) {
+        const product = data.products.find((item) => item.id === id);
+        if (!product || product.stock < quantity) {
+          throw new InsufficientStockError();
+        }
+      }
+
+      const now = new Date().toISOString();
+      data.products = data.products.map((product) => {
+        const quantity = quantities.get(product.id);
+        return quantity === undefined
+          ? product
+          : { ...product, stock: product.stock - quantity, updatedAt: now };
+      });
+      return;
+    }
+
+    const reserved = await supabaseRequest<boolean>("rpc/reserve_product_stock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ p_items: items })
+    });
+    if (!reserved) throw new InsufficientStockError();
+  },
+
+  async releaseStock(items: StockReservationItem[]): Promise<void> {
+    if (isMemory) {
+      const data = getMemoryData();
+      const quantities = new Map<string, number>();
+      for (const item of items) {
+        quantities.set(item.id, (quantities.get(item.id) || 0) + item.quantity);
+      }
+
+      for (const id of quantities.keys()) {
+        if (!data.products.some((product) => product.id === id)) {
+          throw new Error("Unable to release stock for a product that no longer exists.");
+        }
+      }
+
+      const now = new Date().toISOString();
+      data.products = data.products.map((product) => {
+        const quantity = quantities.get(product.id);
+        return quantity === undefined
+          ? product
+          : { ...product, stock: product.stock + quantity, updatedAt: now };
+      });
+      return;
+    }
+
+    const released = await supabaseRequest<boolean>("rpc/release_product_stock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ p_items: items })
+    });
+    if (!released) throw new Error("Unable to release product stock.");
   },
 
   async getTheme(): Promise<Theme> {
