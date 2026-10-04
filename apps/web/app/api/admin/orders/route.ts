@@ -19,7 +19,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    return NextResponse.json(await getOrders());
+    const completed = new URL(request.url).searchParams.get("completed") === "true";
+    return NextResponse.json(await getOrders(completed));
   } catch (error) {
     console.error("Unable to load orders", error);
     return NextResponse.json({ error: "Unable to load orders" }, { status: 500 });

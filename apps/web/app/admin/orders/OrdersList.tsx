@@ -1,0 +1,216 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { completeOrderAdmin, deleteOrderAdmin, fetchOrdersAdmin } from "@/lib/admin-api";
+import { formatPrice } from "@/lib/api";
+import type { AdminOrder } from "@/lib/order-types";
+
+export function OrdersList({ completed = false }: { completed?: boolean }) {
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState("");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("newest");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        setOrders(await fetchOrdersAdmin(completed));
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Unable to load orders.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, [completed]);
+
+  async function handleComplete(id: string) {
+    setActionId(id);
+    setError("");
+    try {
+      await completeOrderAdmin(id);
+      setOrders((currentOrders) => currentOrders.filter((order) => order.id !== id));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to complete order.");
+    } finally {
+      setActionId("");
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setActionId(id);
+    setError("");
+    try {
+      await deleteOrderAdmin(id);
+      setOrders((currentOrders) => currentOrders.filter((order) => order.id !== id));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to delete order.");
+    } finally {
+      setActionId("");
+    }
+  }
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, sort]);
+
+  const filteredOrders = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const matchingOrders = normalizedQuery
+      ? orders.filter(
+          (order) =>
+            order.name.toLowerCase().includes(normalizedQuery) ||
+            order.email.toLowerCase().includes(normalizedQuery)
+        )
+      : orders;
+
+    return [...matchingOrders].sort((first, second) => {
+      switch (sort) {
+        case "oldest":
+          return new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime();
+        case "name-asc":
+          return first.name.localeCompare(second.name);
+        case "name-desc":
+          return second.name.localeCompare(first.name);
+        case "total-asc":
+          return first.totalPrice - second.totalPrice;
+        case "total-desc":
+          return second.totalPrice - first.totalPrice;
+        default:
+          return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
+      }
+    });
+  }, [orders, query, sort]);
+
+  const ordersPerPage = 4;
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ordersPerPage));
+  const currentPage = Math.min(page, totalPages);
+  const visibleOrders = filteredOrders.slice(
+    (currentPage - 1) * ordersPerPage,
+    currentPage * ordersPerPage
+  );
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <h1 className="font-display text-3xl font-bold text-ink">
+          {completed ? "Completed orders" : "Orders"}
+        </h1>
+        <div className="flex flex-wrap gap-3">
+          <label className="sr-only" htmlFor="order-search">
+            Search orders
+          </label>
+          <input
+            id="order-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search name or email"
+            className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm"
+          />
+          <label className="sr-only" htmlFor="order-sort">
+            Sort orders
+          </label>
+          <select
+            id="order-sort"
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+            className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name-asc">Customer name A-Z</option>
+            <option value="name-desc">Customer name Z-A</option>
+            <option value="total-asc">Total low to high</option>
+            <option value="total-desc">Total high to low</option>
+          </select>
+        </div>
+      </div>
+      {loading ? (
+        <p className="text-ink/60">Loading…</p>
+      ) : error ? (
+        <p className="text-red-700">{error}</p>
+      ) : orders.length === 0 ? (
+        <p className="text-ink/60">
+          {completed ? "No completed orders yet." : "No orders yet."}
+        </p>
+      ) : filteredOrders.length === 0 ? (
+        <p className="text-ink/60">No orders match your search.</p>
+      ) : (
+        <div className="space-y-4">
+          {visibleOrders.map((order) => (
+            <article key={order.id} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold text-ink">{order.name}</h2>
+                  <a className="text-sm text-primary hover:underline" href={`mailto:${order.email}`}>
+                    {order.email}
+                  </a>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold text-primary">{formatPrice(order.totalPrice, order.currency)}</p>
+                  <p className="text-sm text-ink/60">
+                    {new Intl.DateTimeFormat("nl-NL", {
+                      dateStyle: "medium",
+                      timeStyle: "short"
+                    }).format(new Date(order.createdAt))}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 whitespace-pre-line text-sm text-ink/70">{order.address}</p>
+              <ul className="mt-4 border-t border-black/10 pt-3 text-sm text-ink/80">
+                {order.items.map((item, index) => (
+                  <li key={`${order.id}-${index}`}>
+                    {item.quantity}× {item.name} — {formatPrice(item.price * item.quantity, item.currency)}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex flex-wrap gap-3 border-t border-black/10 pt-4">
+                {!completed && (
+                  <button
+                    onClick={() => handleComplete(order.id)}
+                    disabled={actionId === order.id}
+                    className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {actionId === order.id ? "Saving…" : "Mark as completed"}
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(order.id)}
+                  disabled={actionId === order.id}
+                  className="rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {actionId === order.id ? "Deleting…" : "Delete"}
+                </button>
+              </div>
+            </article>
+          ))}
+          {totalPages > 1 && (
+            <nav className="flex items-center justify-center gap-3 pt-2" aria-label="Order pagination">
+              <button
+                onClick={() => setPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="rounded-full border border-black/10 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-ink/60">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="rounded-full border border-black/10 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </nav>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
