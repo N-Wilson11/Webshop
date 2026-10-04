@@ -4,12 +4,37 @@ import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/api";
 
+type CheckoutForm = {
+  name: string;
+  email: string;
+  street: string;
+  houseNumber: string;
+  houseNumberAddition: string;
+  postalCode: string;
+  city: string;
+  country: string;
+};
+
+function formatDeliveryAddress(form: CheckoutForm) {
+  const houseNumber = `${form.houseNumber}${form.houseNumberAddition ? ` ${form.houseNumberAddition}` : ""}`;
+  return `${form.street} ${houseNumber}\n${form.postalCode.toUpperCase()} ${form.city}\n${form.country}`;
+}
+
 export default function CheckoutPage() {
   const { items, totalPrice, clear } = useCart();
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", address: "" });
+  const [form, setForm] = useState<CheckoutForm>({
+    name: "",
+    email: "",
+    street: "",
+    houseNumber: "",
+    houseNumberAddition: "",
+    postalCode: "",
+    city: "",
+    country: "Nederland"
+  });
 
   if (submitted) {
     return (
@@ -44,7 +69,7 @@ export default function CheckoutPage() {
               body: JSON.stringify({
                 email: form.email,
                 name: form.name,
-                address: form.address,
+                address: formatDeliveryAddress(form),
                 items,
                 totalPrice,
                 currency: items[0]?.currency || "EUR"
@@ -67,29 +92,129 @@ export default function CheckoutPage() {
           }
         }}
       >
-        <input
-          required
-          placeholder="Full name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="rounded-lg border border-black/10 px-4 py-2"
-        />
-        <input
-          required
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          className="rounded-lg border border-black/10 px-4 py-2"
-        />
-        <textarea
-          required
-          placeholder="Delivery address"
-          value={form.address}
-          onChange={(e) => setForm({ ...form, address: e.target.value })}
-          className="rounded-lg border border-black/10 px-4 py-2"
-          rows={3}
-        />
+        <fieldset className="flex flex-col gap-4">
+          <legend className="font-semibold text-ink">Contact details</legend>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="name" className="text-sm font-medium text-ink">
+              Full name
+            </label>
+            <input
+              id="name"
+              required
+              autoComplete="name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="rounded-lg border border-black/10 px-4 py-2"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="email" className="text-sm font-medium text-ink">
+              Email address
+            </label>
+            <input
+              id="email"
+              required
+              type="email"
+              autoComplete="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="rounded-lg border border-black/10 px-4 py-2"
+            />
+          </div>
+        </fieldset>
+        <fieldset className="flex flex-col gap-4 border-t border-black/10 pt-4">
+          <legend className="font-semibold text-ink">Delivery address</legend>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="street" className="text-sm font-medium text-ink">
+              Street name
+            </label>
+            <input
+              id="street"
+              required
+              autoComplete="address-line1"
+              value={form.street}
+              onChange={(e) => setForm({ ...form, street: e.target.value })}
+              className="rounded-lg border border-black/10 px-4 py-2"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="house-number" className="text-sm font-medium text-ink">
+                House number
+              </label>
+              <input
+                id="house-number"
+                required
+                inputMode="numeric"
+                pattern="[0-9]+"
+                autoComplete="address-line1"
+                value={form.houseNumber}
+                onChange={(e) => setForm({ ...form, houseNumber: e.target.value })}
+                className="rounded-lg border border-black/10 px-4 py-2"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="house-number-addition" className="text-sm font-medium text-ink">
+                Addition <span className="font-normal text-ink/60">(optional)</span>
+              </label>
+              <input
+                id="house-number-addition"
+                autoComplete="address-line2"
+                value={form.houseNumberAddition}
+                onChange={(e) => setForm({ ...form, houseNumberAddition: e.target.value })}
+                className="rounded-lg border border-black/10 px-4 py-2"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="postal-code" className="text-sm font-medium text-ink">
+                Postal code
+              </label>
+              <input
+                id="postal-code"
+                required
+                autoComplete="postal-code"
+                inputMode="text"
+                pattern="[1-9][0-9]{3}[ ]?[A-Za-z]{2}"
+                title="Enter a valid Dutch postal code, for example 1234 AB."
+                value={form.postalCode}
+                onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                className="rounded-lg border border-black/10 px-4 py-2"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="city" className="text-sm font-medium text-ink">
+                City
+              </label>
+              <input
+                id="city"
+                required
+                autoComplete="address-level2"
+                value={form.city}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+                className="rounded-lg border border-black/10 px-4 py-2"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="country" className="text-sm font-medium text-ink">
+              Country
+            </label>
+            <select
+              id="country"
+              required
+              autoComplete="country-name"
+              value={form.country}
+              onChange={(e) => setForm({ ...form, country: e.target.value })}
+              className="rounded-lg border border-black/10 bg-white px-4 py-2"
+            >
+              <option value="Nederland">Nederland</option>
+              <option value="België">België</option>
+              <option value="Duitsland">Duitsland</option>
+            </select>
+          </div>
+        </fieldset>
         <div className="flex items-center justify-between border-t border-black/10 pt-4">
           <span className="font-semibold text-ink">Total due</span>
           <span className="text-xl font-bold text-primary">
