@@ -11,6 +11,7 @@ export function ProductCard({ product }: { product: Product }) {
   const [added, setAdded] = useState(false);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quantityInCart = items.find((i) => i.id === product.id)?.quantity ?? 0;
+  const isStockExhausted = quantityInCart >= product.stock;
 
   useEffect(() => {
     return () => {
@@ -59,12 +60,12 @@ export function ProductCard({ product }: { product: Product }) {
           <div className="relative">
             <button
               onClick={handleAddToCart}
-              disabled={product.stock <= 0}
+              disabled={isStockExhausted}
               className={`rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${
                 added ? "add-to-cart-confirmation" : ""
               }`}
             >
-              {product.stock <= 0 ? "Sold out" : added ? "Added" : "Add to cart"}
+              {isStockExhausted ? "Sold out" : added ? "Added" : "Add to cart"}
             </button>
             {quantityInCart > 0 && (
               <span
