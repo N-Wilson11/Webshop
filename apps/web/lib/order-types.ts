@@ -18,4 +18,5 @@ export type OrderSubmission = {
 export type AdminOrder = OrderSubmission & {
   id: string;
   createdAt: string;
+  completedAt: string | null;
 };

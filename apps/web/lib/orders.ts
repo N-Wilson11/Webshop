@@ -3,6 +3,7 @@ import type { AdminOrder, OrderItem, OrderSubmission } from "./order-types";
 type SupabaseOrder = {
   id: string;
   created_at: string;
+  completed_at: string | null;
   customer_name: string;
   customer_email: string;
   delivery_address: string;
@@ -26,6 +27,7 @@ function toAdminOrder(order: SupabaseOrder): AdminOrder {
   return {
     id: order.id,
     createdAt: order.created_at,
+    completedAt: order.completed_at,
     name: order.customer_name,
     email: order.customer_email,
     address: order.delivery_address,
@@ -108,14 +110,14 @@ export async function saveOrder(order: OrderSubmission) {
   }
 }
 
-export async function getOrders(): Promise<AdminOrder[]> {
+export async function getOrders(completed = false): Promise<AdminOrder[]> {
   const { url, serviceRoleKey } = getSupabaseConfig();
   const pageSize = 1000;
   const orders: SupabaseOrder[] = [];
 
   for (let from = 0; ; from += pageSize) {
     const response = await fetch(
-      `${url}/rest/v1/orders?select=id,created_at,customer_name,customer_email,delivery_address,items,total_price,currency&order=created_at.desc`,
+      `${url}/rest/v1/orders?select=id,created_at,completed_at,customer_name,customer_email,delivery_address,items,total_price,currency&completed_at=${completed ? "not.is.null" : "is.null"}&order=created_at.desc`,
       {
         headers: {
           apikey: serviceRoleKey,
@@ -136,5 +138,41 @@ export async function getOrders(): Promise<AdminOrder[]> {
     if (page.length < pageSize) {
       return orders.map(toAdminOrder);
     }
+  }
+}
+
+export async function completeOrder(id: string) {
+  const { url, serviceRoleKey } = getSupabaseConfig();
+  const response = await fetch(`${url}/rest/v1/orders?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({ completed_at: new Date().toISOString() }),
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supabase could not complete the order (${response.status})`);
+  }
+}
+
+export async function deleteOrder(id: string) {
+  const { url, serviceRoleKey } = getSupabaseConfig();
+  const response = await fetch(`${url}/rest/v1/orders?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      Prefer: "return=minimal"
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supabase could not delete the order (${response.status})`);
   }
 }

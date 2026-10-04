@@ -21,8 +21,8 @@ function authHeaders() {
   return { Authorization: `Bearer ${getAdminToken()}` };
 }
 
-export async function fetchOrdersAdmin() {
-  const res = await fetch("/api/admin/orders", {
+export async function fetchOrdersAdmin(completed = false) {
+  const res = await fetch(`/api/admin/orders?completed=${completed}`, {
     headers: authHeaders(),
     cache: "no-store"
   });
@@ -30,6 +30,22 @@ export async function fetchOrdersAdmin() {
     throw new Error((await res.json()).error || "Failed to load orders");
   }
   return res.json();
+}
+
+export async function completeOrderAdmin(id: string) {
+  const res = await fetch(`/api/admin/orders/${id}`, {
+    method: "PATCH",
+    headers: authHeaders()
+  });
+  if (!res.ok) throw new Error((await res.json()).error || "Failed to complete order");
+}
+
+export async function deleteOrderAdmin(id: string) {
+  const res = await fetch(`/api/admin/orders/${id}`, {
+    method: "DELETE",
+    headers: authHeaders()
+  });
+  if (!res.ok) throw new Error((await res.json()).error || "Failed to delete order");
 }
 
 export async function isTokenValid(): Promise<boolean> {
