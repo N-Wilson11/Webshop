@@ -6,10 +6,14 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Chatbot } from "@/components/Chatbot";
 
-export const metadata: Metadata = {
-  title: "Cookie Corner",
-  description: "Freshly baked cookies, delivered to your door."
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const theme = await getTheme();
+  return {
+    title: theme.shopName,
+    description: theme.tagline,
+    icons: { icon: theme.iconUrl }
+  };
+}
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const theme = await getTheme();
@@ -30,8 +34,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <style dangerouslySetInnerHTML={{ __html: themeStyle }} />
       </head>
       <body className="min-h-screen font-sans">
-        <CartProvider>
-          <Header shopName={theme.shopName} />
+        <CartProvider iconUrl={theme.iconUrl}>
+          <Header shopName={theme.shopName} iconUrl={theme.iconUrl} />
           <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
           <Footer shopName={theme.shopName} tagline={theme.tagline} />
           <Chatbot shopName={theme.shopName} />

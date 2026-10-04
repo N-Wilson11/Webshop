@@ -26,6 +26,7 @@ export class InsufficientStockError extends Error {
 export type Theme = {
   shopName: string;
   tagline: string;
+  iconUrl: string;
   colors: {
     primary: string;
     secondary: string;
@@ -64,6 +65,7 @@ type SupabaseProduct = {
 const defaultTheme: Theme = {
   shopName: "Cookie Corner",
   tagline: "Freshly baked happiness, delivered to your door.",
+  iconUrl: "/icon.svg",
   colors: {
     primary: "#8B5E3C",
     secondary: "#F4B942",
@@ -72,6 +74,15 @@ const defaultTheme: Theme = {
     text: "#3A2618"
   }
 };
+
+function normalizeTheme(theme: Partial<Theme>): Theme {
+  return {
+    ...defaultTheme,
+    ...theme,
+    iconUrl: typeof theme.iconUrl === "string" && theme.iconUrl ? theme.iconUrl : defaultTheme.iconUrl,
+    colors: { ...defaultTheme.colors, ...theme.colors }
+  };
+}
 
 function seedProducts(): Product[] {
   const now = new Date().toISOString();
@@ -386,13 +397,13 @@ export const store = {
   },
 
   async getTheme(): Promise<Theme> {
-    if (isMemory) return getMemoryData().theme;
+    if (isMemory) return normalizeTheme(getMemoryData().theme);
 
     const settings = await supabaseRequest<Array<{ theme: Theme }>>(
       "store_settings?select=theme&id=eq.1&limit=1"
     );
     if (!settings[0]) throw new Error("Supabase store settings are not initialized");
-    return settings[0].theme;
+    return normalizeTheme(settings[0].theme);
   },
 
   async getThemeHistory(): Promise<ThemeHistoryEntry[]> {
@@ -403,15 +414,16 @@ export const store = {
     );
     return history.map((entry) => ({
       id: entry.id,
-      theme: entry.theme,
+      theme: normalizeTheme(entry.theme),
       createdAt: entry.created_at
     }));
   },
 
   async setTheme(theme: Theme): Promise<Theme> {
+    const normalizedTheme = normalizeTheme(theme);
     if (isMemory) {
       const data = getMemoryData();
-      if (JSON.stringify(data.theme) !== JSON.stringify(theme)) {
+      if (JSON.stringify(data.theme) !== JSON.stringify(normalizedTheme)) {
         data.themeHistory = [
           {
             id: Date.now(),
@@ -421,14 +433,14 @@ export const store = {
           ...data.themeHistory
         ].slice(0, 5);
       }
-      data.theme = theme;
-      return theme;
+      data.theme = normalizedTheme;
+      return normalizedTheme;
     }
 
     return supabaseRequest<Theme>("rpc/set_store_theme", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ p_theme: theme })
+      body: JSON.stringify({ p_theme: normalizedTheme })
     });
   },
 
@@ -446,7 +458,7 @@ export const store = {
         },
         ...data.themeHistory.filter((item) => item.id !== historyId)
       ].slice(0, 5);
-      data.theme = entry.theme;
+      data.theme = normalizeTheme(entry.theme);
       return data.theme;
     }
 
@@ -455,6 +467,6 @@ export const store = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ p_history_id: historyId })
     });
-    return theme || undefined;
+    return theme ? normalizeTheme(theme) : undefined;
   }
 };

@@ -1,6 +1,7 @@
 export type Theme = {
   shopName: string;
   tagline: string;
+  iconUrl: string;
   colors: {
     primary: string;
     secondary: string;
@@ -33,6 +34,7 @@ export type Product = {
 export const DEFAULT_THEME: Theme = {
   shopName: "Cookie Corner",
   tagline: "Freshly baked happiness, delivered to your door.",
+  iconUrl: "/icon.svg",
   colors: {
     primary: "#8B5E3C",
     secondary: "#F4B942",

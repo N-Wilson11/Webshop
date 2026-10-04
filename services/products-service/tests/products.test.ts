@@ -83,6 +83,7 @@ describe("products-service", () => {
     const get = await request(app).get("/settings/theme");
     expect(get.status).toBe(200);
     expect(get.body.colors.primary).toBeDefined();
+    expect(get.body.iconUrl).toBe("/icon.svg");
 
     const put = await request(app)
       .put("/settings/theme")

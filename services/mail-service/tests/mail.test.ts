@@ -118,10 +118,35 @@ describe("mail-service", () => {
     }
   });
 
-  it("falls back to a cookie emoji placeholder when no image is available", async () => {
+  it("uses the saved theme colors and icon", async () => {
+    const { subject, html } = await buildOrderConfirmationEmail(
+      {
+        ...order,
+        theme: {
+          shopName: "Midnight Cookies",
+          iconUrl: "https://cdn.example.com/logo.png",
+          colors: {
+            primary: "#112233",
+            secondary: "#445566",
+            accent: "#778899",
+            background: "#aabbcc",
+            text: "#ddee00"
+          }
+        }
+      },
+      "Cookie Corner"
+    );
+
+    expect(subject).toBe("Order confirmed — Midnight Cookies");
+    expect(html).toContain('src="https://cdn.example.com/logo.png"');
+    expect(html).toContain("background-color: #112233");
+    expect(html).toContain("background-color: #aabbcc");
+  });
+
+  it("falls back to an image placeholder when no image is available", async () => {
     const { html } = await buildOrderConfirmationEmail(order, "Cookie Corner");
 
     expect(html).not.toContain("<img");
-    expect(html).toContain("🍪");
+    expect(html).toContain("Image unavailable");
   });
 });

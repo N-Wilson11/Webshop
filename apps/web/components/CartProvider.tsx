@@ -22,12 +22,13 @@ type CartContextValue = {
   totalItems: number;
   totalPrice: number;
   cartAnimation: number;
+  iconUrl: string;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "cookie-shop-cart";
 
-export function CartProvider({ children }: { children: ReactNode }) {
+export function CartProvider({ children, iconUrl = "/icon.svg" }: { children: ReactNode; iconUrl?: string }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [cartAnimation, setCartAnimation] = useState(0);
@@ -109,7 +110,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         clear,
         totalItems,
         totalPrice,
-        cartAnimation
+        cartAnimation,
+        iconUrl
       }}
     >
       {children}

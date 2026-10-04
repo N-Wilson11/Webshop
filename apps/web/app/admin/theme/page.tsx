@@ -6,7 +6,8 @@ import {
   fetchThemeAdmin,
   fetchThemeHistoryAdmin,
   restoreThemeAdmin,
-  saveTheme
+  saveTheme,
+  uploadImage
 } from "@/lib/admin-api";
 import { DEFAULT_THEME, type Theme, type ThemeHistoryEntry } from "@/lib/api";
 
@@ -22,6 +23,7 @@ function ThemeEditor() {
   const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
   const [saved, setSaved] = useState(false);
   const [history, setHistory] = useState<ThemeHistoryEntry[]>([]);
   const [error, setError] = useState("");
@@ -75,6 +77,22 @@ function ThemeEditor() {
     }
   }
 
+  async function handleIconUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingIcon(true);
+    setError("");
+    try {
+      const iconUrl = await uploadImage(file);
+      setTheme({ ...theme, iconUrl });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to upload icon.");
+    } finally {
+      setUploadingIcon(false);
+    }
+  }
+
   if (loading) return <p className="text-ink/60">Loading…</p>;
 
   return (
@@ -87,6 +105,15 @@ function ThemeEditor() {
             onChange={(e) => setTheme({ ...theme, shopName: e.target.value })}
             className="rounded-lg border border-black/10 px-4 py-2"
           />
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-ink">Website icon</span>
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleIconUpload} />
+          {uploadingIcon && <span className="text-xs text-ink/60">Uploading icon…</span>}
+          {theme.iconUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={theme.iconUrl} alt="Website icon preview" className="h-16 w-16 rounded-full object-cover" />
+          )}
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-ink">Tagline</span>
@@ -123,7 +150,7 @@ function ThemeEditor() {
 
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || uploadingIcon}
           className="mt-4 rounded-full bg-primary px-6 py-3 font-semibold text-white transition hover:bg-primary/90 disabled:opacity-50"
         >
           {saving ? "Saving…" : saved ? "Saved ✓" : "Save theme"}

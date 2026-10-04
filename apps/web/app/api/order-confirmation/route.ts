@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendAdminOrderDiscordNotification } from "@/lib/admin-discord";
-import { PRODUCTS_API } from "@/lib/api";
+import { getTheme, PRODUCTS_API } from "@/lib/api";
 import { parseOrderSubmission, saveOrder } from "@/lib/orders";
 
 const MAIL_SERVICE_URL = process.env.MAIL_SERVICE_URL || "http://localhost:4003";
@@ -80,10 +80,11 @@ export async function POST(request: Request) {
 
   let response: Response;
   try {
+    const theme = await getTheme();
     response = await fetch(`${MAIL_SERVICE_URL}/order-confirmations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(order),
+      body: JSON.stringify({ ...order, theme }),
       cache: "no-store"
     });
   } catch (error) {

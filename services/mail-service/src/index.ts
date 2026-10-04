@@ -10,15 +10,40 @@ export type OrderItem = {
   imageUrl?: string;
 };
 
+export type Theme = {
+  shopName: string;
+  iconUrl: string;
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    text: string;
+  };
+};
+
 export type OrderConfirmation = {
   email: string;
   name: string;
   items: OrderItem[];
   totalPrice: number;
   currency: string;
+  theme?: Theme;
 };
 
 export type SendOrderConfirmation = (order: OrderConfirmation) => Promise<void>;
+
+const defaultTheme: Theme = {
+  shopName: "Cookie Corner",
+  iconUrl: "",
+  colors: {
+    primary: "#8B5E3C",
+    secondary: "#F4B942",
+    accent: "#D96C4C",
+    background: "#FFF8F0",
+    text: "#3A2618"
+  }
+};
 
 function isOrderConfirmation(value: unknown): value is OrderConfirmation {
   if (!value || typeof value !== "object") return false;
@@ -45,7 +70,8 @@ function isOrderConfirmation(value: unknown): value is OrderConfirmation {
     ) &&
     Number.isFinite(order.totalPrice) &&
     (order.totalPrice as number) >= 0 &&
-    typeof order.currency === "string"
+    typeof order.currency === "string" &&
+    (order.theme === undefined || isTheme(order.theme))
   );
 }
 
@@ -59,6 +85,21 @@ function resolveImageUrl(imageUrl: string | undefined): string | null {
 
   const base = process.env.PUBLIC_WEB_URL || "http://localhost:3000";
   return `${base.replace(/\/$/, "")}/${imageUrl.replace(/^\//, "")}`;
+}
+
+function isTheme(value: unknown): value is Theme {
+  if (!value || typeof value !== "object") return false;
+
+  const theme = value as Record<string, unknown>;
+  const colors = theme.colors as Record<string, unknown> | undefined;
+  return (
+    typeof theme.shopName === "string" &&
+    typeof theme.iconUrl === "string" &&
+    !!colors &&
+    ["primary", "secondary", "accent", "background", "text"].every(
+      (color) => typeof colors[color] === "string"
+    )
+  );
 }
 
 function escapeHtml(value: string) {
@@ -86,75 +127,84 @@ function getSenderEmail(from: string) {
 }
 
 export async function buildOrderConfirmationEmail(order: OrderConfirmation, senderName: string) {
+  const theme = order.theme || defaultTheme;
+  const brandName = theme.shopName || senderName;
+  const colors = Object.fromEntries(
+    Object.entries(theme.colors).map(([key, value]) => [key, escapeHtml(value)])
+  ) as Theme["colors"];
+  const iconUrl = resolveImageUrl(theme.iconUrl);
+  const brandIcon = iconUrl
+    ? `<img src="${escapeHtml(iconUrl)}" alt="" width="48" height="48" style="display: inline-block; width: 48px; height: 48px; border-radius: 50%; object-fit: cover;" />`
+    : "";
   const itemRows = order.items
     .map((item) => {
       const imageUrl = resolveImageUrl(item.imageUrl);
       const imageCell = imageUrl
         ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.name)}" width="56" height="56" style="display: block; width: 56px; height: 56px; border-radius: 10px; object-fit: cover;" />`
-        : `<div style="width: 56px; height: 56px; border-radius: 10px; background-color: #fff2df; text-align: center; line-height: 56px; font-size: 24px;">🍪</div>`;
+        : `<div style="width: 56px; height: 56px; border-radius: 10px; background-color: ${colors.background}; text-align: center; line-height: 56px; color: ${colors.text}; font-size: 11px;">Image unavailable</div>`;
 
       return `<tr>
             <td style="padding: 14px 0; border-bottom: 1px solid #eadfd5;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="width: 56px; padding-right: 12px; vertical-align: middle;">${imageCell}</td>
-                  <td style="vertical-align: middle; color: #3a2618; font-size: 15px; line-height: 22px;">${escapeHtml(item.name)}</td>
+                  <td style="vertical-align: middle; color: ${colors.text}; font-size: 15px; line-height: 22px;">${escapeHtml(item.name)}</td>
                 </tr>
               </table>
             </td>
-            <td align="center" style="padding: 14px 12px; border-bottom: 1px solid #eadfd5; color: #705c50; font-size: 15px; line-height: 22px;">${item.quantity}</td>
-            <td align="right" style="padding: 14px 0; border-bottom: 1px solid #eadfd5; color: #3a2618; font-size: 15px; font-weight: 600; line-height: 22px; white-space: nowrap;">${formatPrice(item.price * item.quantity, item.currency)}</td>
+            <td align="center" style="padding: 14px 12px; border-bottom: 1px solid #eadfd5; color: ${colors.text}; font-size: 15px; line-height: 22px;">${item.quantity}</td>
+            <td align="right" style="padding: 14px 0; border-bottom: 1px solid #eadfd5; color: ${colors.text}; font-size: 15px; font-weight: 600; line-height: 22px; white-space: nowrap;">${formatPrice(item.price * item.quantity, item.currency)}</td>
           </tr>`;
     })
     .join("");
   const total = formatPrice(order.totalPrice, order.currency);
 
   return {
-    subject: `Order confirmed — ${senderName}`,
+    subject: `Order confirmed — ${brandName}`,
     text: `Hello ${order.name},\n\nThank you for your order!\n\n${order.items
       .map((item) => `${item.quantity} x ${item.name} — ${formatPrice(item.price * item.quantity, item.currency)}`)
-      .join("\n")}\n\nTotal: ${total}\n\nWe are preparing your cookies now.\n\nWith love,\n${senderName}`,
+      .join("\n")}\n\nTotal: ${total}\n\nWe are preparing your cookies now.\n\nWith love,\n${brandName}`,
     html: `<!doctype html>
 <html lang="en">
-  <body style="margin: 0; padding: 0; background-color: #fff8f0; color: #3a2618; font-family: Arial, Helvetica, sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #fff8f0; padding: 32px 16px;">
+  <body style="margin: 0; padding: 0; background-color: ${colors.background}; color: ${colors.text}; font-family: Arial, Helvetica, sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: ${colors.background}; padding: 32px 16px;">
       <tr>
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 16px rgba(58, 38, 24, 0.1);">
             <tr>
-              <td style="padding: 32px 40px; background-color: #8b5e3c; text-align: center;">
-                <p style="margin: 0 0 8px; color: #f4b942; font-size: 30px; line-height: 36px;">🍪</p>
-                <p style="margin: 0; color: #ffffff; font-family: Georgia, 'Times New Roman', serif; font-size: 28px; font-weight: bold; line-height: 34px;">${escapeHtml(senderName)}</p>
+              <td style="padding: 32px 40px; background-color: ${colors.primary}; text-align: center;">
+                <p style="margin: 0 0 8px; font-size: 30px; line-height: 36px;">${brandIcon}</p>
+                <p style="margin: 0; color: #ffffff; font-family: Georgia, 'Times New Roman', serif; font-size: 28px; font-weight: bold; line-height: 34px;">${escapeHtml(brandName)}</p>
               </td>
             </tr>
             <tr>
               <td style="padding: 40px;">
-                <p style="margin: 0 0 16px; color: #3a2618; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; font-weight: bold; line-height: 34px;">Your order is confirmed!</p>
-                <p style="margin: 0 0 28px; color: #705c50; font-size: 16px; line-height: 25px;">Hello ${escapeHtml(order.name)},<br>Thank you for your order. We are preparing your freshly baked cookies now.</p>
+                <p style="margin: 0 0 16px; color: ${colors.text}; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; font-weight: bold; line-height: 34px;">Your order is confirmed!</p>
+                <p style="margin: 0 0 28px; color: ${colors.text}; font-size: 16px; line-height: 25px;">Hello ${escapeHtml(order.name)},<br>Thank you for your order. We are preparing your freshly baked cookies now.</p>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
                   <thead>
                     <tr>
-                      <th align="left" style="padding: 0 0 10px; border-bottom: 2px solid #8b5e3c; color: #8b5e3c; font-size: 12px; letter-spacing: 0.8px; line-height: 18px; text-transform: uppercase;">Item</th>
-                      <th align="center" style="padding: 0 12px 10px; border-bottom: 2px solid #8b5e3c; color: #8b5e3c; font-size: 12px; letter-spacing: 0.8px; line-height: 18px; text-transform: uppercase;">Qty</th>
-                      <th align="right" style="padding: 0 0 10px; border-bottom: 2px solid #8b5e3c; color: #8b5e3c; font-size: 12px; letter-spacing: 0.8px; line-height: 18px; text-transform: uppercase;">Subtotal</th>
+                      <th align="left" style="padding: 0 0 10px; border-bottom: 2px solid ${colors.primary}; color: ${colors.primary}; font-size: 12px; letter-spacing: 0.8px; line-height: 18px; text-transform: uppercase;">Item</th>
+                      <th align="center" style="padding: 0 12px 10px; border-bottom: 2px solid ${colors.primary}; color: ${colors.primary}; font-size: 12px; letter-spacing: 0.8px; line-height: 18px; text-transform: uppercase;">Qty</th>
+                      <th align="right" style="padding: 0 0 10px; border-bottom: 2px solid ${colors.primary}; color: ${colors.primary}; font-size: 12px; letter-spacing: 0.8px; line-height: 18px; text-transform: uppercase;">Subtotal</th>
                     </tr>
                   </thead>
                   <tbody>${itemRows}</tbody>
                 </table>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 20px;">
                   <tr>
-                    <td style="color: #3a2618; font-size: 18px; font-weight: bold; line-height: 28px;">Total</td>
-                    <td align="right" style="color: #8b5e3c; font-size: 22px; font-weight: bold; line-height: 28px;">${total}</td>
+                    <td style="color: ${colors.text}; font-size: 18px; font-weight: bold; line-height: 28px;">Total</td>
+                    <td align="right" style="color: ${colors.primary}; font-size: 22px; font-weight: bold; line-height: 28px;">${total}</td>
                   </tr>
                 </table>
-                <div style="margin-top: 32px; padding: 20px 24px; background-color: #fff8f0; border-radius: 10px;">
-                  <p style="margin: 0; color: #705c50; font-size: 14px; line-height: 22px;">We will send another update when your delicious cookies are on their way.</p>
+                <div style="margin-top: 32px; padding: 20px 24px; background-color: ${colors.background}; border-radius: 10px;">
+                  <p style="margin: 0; color: ${colors.text}; font-size: 14px; line-height: 22px;">We will send another update when your delicious cookies are on their way.</p>
                 </div>
               </td>
             </tr>
             <tr>
-              <td style="padding: 24px 40px; background-color: #f8f0e8; text-align: center;">
-                <p style="margin: 0; color: #705c50; font-size: 13px; line-height: 20px;">Baked with love at ${escapeHtml(senderName)}</p>
+              <td style="padding: 24px 40px; background-color: ${colors.secondary}; text-align: center;">
+                <p style="margin: 0; color: ${colors.text}; font-size: 13px; line-height: 20px;">Baked with love at ${escapeHtml(brandName)}</p>
               </td>
             </tr>
           </table>

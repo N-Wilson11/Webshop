@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/api";
@@ -21,7 +22,7 @@ function formatDeliveryAddress(form: CheckoutForm) {
 }
 
 export default function CheckoutPage() {
-  const { items, totalPrice, clear } = useCart();
+  const { items, totalPrice, clear, iconUrl } = useCart();
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -39,7 +40,8 @@ export default function CheckoutPage() {
   if (submitted) {
     return (
       <div className="mx-auto max-w-lg text-center">
-        <h1 className="font-display text-3xl font-bold text-ink">Thank you! 🍪</h1>
+        <Image src={iconUrl} alt="" width={64} height={64} className="mx-auto mb-3 h-16 w-16 rounded-full object-cover" unoptimized />
+        <h1 className="font-display text-3xl font-bold text-ink">Thank you!</h1>
         <p className="mt-3 text-ink/70">
           Your order has been placed. This is a demo checkout — plug in a real payment
           provider (e.g. Stripe) for production use.
