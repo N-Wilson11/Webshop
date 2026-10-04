@@ -36,7 +36,7 @@ describe("ProductCard", () => {
     expect(screen.getByText("Add to cart")).toBeInTheDocument();
   });
 
-  it("shows sold out when stock is zero", () => {
+  it("shows that sold out is available when stock is zero", () => {
     render(
       <CartProvider>
         <ProductCard product={{ ...sampleProduct, stock: 0 }} />
@@ -73,5 +73,17 @@ describe("ProductCard", () => {
     fireEvent.click(button);
 
     expect(screen.getByLabelText("3 in cart")).toBeInTheDocument();
+  });
+
+  it("shows that no more stock is available when the cart reaches the stock limit", () => {
+    render(
+      <CartProvider>
+        <ProductCard product={{ ...sampleProduct, stock: 1 }} />
+      </CartProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
+
+    expect(screen.getByRole("button", { name: "Sold out" })).toBeDisabled();
   });
 });
