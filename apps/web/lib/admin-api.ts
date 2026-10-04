@@ -1,6 +1,12 @@
 "use client";
 
-import { PRODUCTS_API_PUBLIC, UPLOAD_API_PUBLIC, type Product, type Theme } from "./api";
+import {
+  PRODUCTS_API_PUBLIC,
+  UPLOAD_API_PUBLIC,
+  type Product,
+  type Theme,
+  type ThemeHistoryEntry
+} from "./api";
 
 const TOKEN_KEY = "cms_admin_token";
 
@@ -118,5 +124,23 @@ export async function saveTheme(theme: Theme) {
     body: JSON.stringify(theme)
   });
   if (!res.ok) throw new Error("Failed to save theme");
+  return res.json();
+}
+
+export async function fetchThemeHistoryAdmin(): Promise<ThemeHistoryEntry[]> {
+  const res = await fetch(`${PRODUCTS_API_PUBLIC}/settings/theme/history`, {
+    headers: authHeaders(),
+    cache: "no-store"
+  });
+  if (!res.ok) throw new Error((await res.json()).error || "Failed to load theme history");
+  return res.json();
+}
+
+export async function restoreThemeAdmin(historyId: number): Promise<Theme> {
+  const res = await fetch(`${PRODUCTS_API_PUBLIC}/settings/theme/history/${historyId}/restore`, {
+    method: "POST",
+    headers: authHeaders()
+  });
+  if (!res.ok) throw new Error((await res.json()).error || "Failed to restore theme");
   return res.json();
 }

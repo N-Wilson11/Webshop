@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { AdminGuard } from "@/components/AdminGuard";
-import { fetchThemeAdmin, saveTheme } from "@/lib/admin-api";
-import { DEFAULT_THEME, type Theme } from "@/lib/api";
+import {
+  fetchThemeAdmin,
+  fetchThemeHistoryAdmin,
+  restoreThemeAdmin,
+  saveTheme
+} from "@/lib/admin-api";
+import { DEFAULT_THEME, type Theme, type ThemeHistoryEntry } from "@/lib/api";
 
 const COLOR_FIELDS: { key: keyof Theme["colors"]; label: string }[] = [
   { key: "primary", label: "Primary" },
@@ -18,21 +23,56 @@ function ThemeEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [history, setHistory] = useState<ThemeHistoryEntry[]>([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchThemeAdmin()
-      .then(setTheme)
-      .finally(() => setLoading(false));
+    async function load() {
+      try {
+        const [currentTheme, themeHistory] = await Promise.all([
+          fetchThemeAdmin(),
+          fetchThemeHistoryAdmin()
+        ]);
+        setTheme(currentTheme);
+        setHistory(themeHistory);
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Unable to load theme settings.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
   }, []);
 
   async function handleSave() {
     setSaving(true);
     setSaved(false);
-    await saveTheme(theme);
-    setSaving(false);
-    setSaved(true);
-    // Re-apply immediately so the admin can preview without a full reload elsewhere
-    location.reload();
+    setError("");
+    try {
+      await saveTheme(theme);
+      setHistory(await fetchThemeHistoryAdmin());
+      setSaved(true);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to save theme.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRestore(entry: ThemeHistoryEntry) {
+    setSaving(true);
+    setSaved(false);
+    setError("");
+    try {
+      setTheme(await restoreThemeAdmin(entry.id));
+      setHistory(await fetchThemeHistoryAdmin());
+      setSaved(true);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to restore theme.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) return <p className="text-ink/60">Loading…</p>;
@@ -88,6 +128,52 @@ function ThemeEditor() {
         >
           {saving ? "Saving…" : saved ? "Saved ✓" : "Save theme"}
         </button>
+        {error && <p className="text-sm text-red-700">{error}</p>}
+
+        <section className="mt-4 border-t border-black/10 pt-5">
+          <h2 className="font-display text-lg font-semibold text-ink">Theme history</h2>
+          <p className="mt-1 text-sm text-ink/60">
+            Your five most recently replaced themes are saved here.
+          </p>
+          {history.length === 0 ? (
+            <p className="mt-3 text-sm text-ink/60">No previous themes yet.</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {history.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-black/10 p-3"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-ink">{entry.theme.shopName}</p>
+                    <p className="text-xs text-ink/60">
+                      {new Intl.DateTimeFormat("nl-NL", {
+                        dateStyle: "medium",
+                        timeStyle: "short"
+                      }).format(new Date(entry.createdAt))}
+                    </p>
+                    <div className="mt-2 flex gap-1" aria-label={`Colors for ${entry.theme.shopName}`}>
+                      {Object.values(entry.theme.colors).map((color) => (
+                        <span
+                          key={color}
+                          className="h-4 w-4 rounded-full border border-black/10"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRestore(entry)}
+                    disabled={saving}
+                    className="rounded-full border border-primary px-3 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Restore
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
 
       <div

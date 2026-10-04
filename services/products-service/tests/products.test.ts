@@ -79,7 +79,7 @@ describe("products-service", () => {
     expect(unavailable.body.error).toMatch(/no longer available/i);
   });
 
-  it("gets and updates theme settings", async () => {
+  it("gets, updates, and restores theme settings from history", async () => {
     const get = await request(app).get("/settings/theme");
     expect(get.status).toBe(200);
     expect(get.body.colors.primary).toBeDefined();
@@ -90,5 +90,18 @@ describe("products-service", () => {
       .send({ ...get.body, colors: { ...get.body.colors, primary: "#000000" } });
     expect(put.status).toBe(200);
     expect(put.body.colors.primary).toBe("#000000");
+
+    const history = await request(app)
+      .get("/settings/theme/history")
+      .set("Authorization", `Bearer ${ADMIN_TOKEN}`);
+    expect(history.status).toBe(200);
+    expect(history.body).toHaveLength(1);
+    expect(history.body[0].theme.colors.primary).toBe(get.body.colors.primary);
+
+    const restore = await request(app)
+      .post(`/settings/theme/history/${history.body[0].id}/restore`)
+      .set("Authorization", `Bearer ${ADMIN_TOKEN}`);
+    expect(restore.status).toBe(200);
+    expect(restore.body.colors.primary).toBe(get.body.colors.primary);
   });
 });

@@ -10,6 +10,12 @@ export type Theme = {
   };
 };
 
+export type ThemeHistoryEntry = {
+  id: number;
+  theme: Theme;
+  createdAt: string;
+};
+
 export type Product = {
   id: string;
   name: string;
