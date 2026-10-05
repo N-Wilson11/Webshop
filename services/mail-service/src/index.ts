@@ -1,6 +1,7 @@
 import cors from "cors";
 import express, { type Request, type Response } from "express";
 import nodemailer from "nodemailer";
+import { metrics, observeRequests } from "./metrics";
 
 export type OrderItem = {
   name: string;
@@ -295,8 +296,10 @@ export function createApp(sendOrderConfirmation: SendOrderConfirmation) {
   const app = express();
   app.use(cors());
   app.use(express.json());
+  app.use(observeRequests);
 
   app.get("/health", (_req, res) => res.json({ status: "ok", service: "mail-service" }));
+  app.get("/metrics", metrics);
 
   app.post("/order-confirmations", async (req: Request, res: Response) => {
     if (!isOrderConfirmation(req.body)) {

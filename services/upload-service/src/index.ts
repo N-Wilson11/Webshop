@@ -5,6 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import { requireAdmin } from "./middleware/auth";
+import { metrics, observeRequests } from "./metrics";
 
 export const app = express();
 
@@ -66,9 +67,11 @@ const upload = multer({
 });
 
 app.use(cors());
+app.use(observeRequests);
 if (localUploadsDir) app.use("/uploads", express.static(localUploadsDir));
 
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "upload-service" }));
+app.get("/metrics", metrics);
 
 app.post("/upload", requireAdmin, upload.single("image"), async (req, res, next) => {
   if (!req.file) return res.status(400).json({ error: "No image file provided" });

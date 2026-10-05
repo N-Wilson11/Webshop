@@ -34,6 +34,7 @@ Open the webshop at:
 - Webshop: http://localhost:3000
 - Products API: http://localhost:4001
 - Upload API: http://localhost:4002
+- Grafana dashboard: http://localhost:3001 (default login: `admin` / `admin`)
 
 
 Stop the application:
@@ -41,6 +42,17 @@ Stop the application:
 ```powershell
 docker compose down
 ```
+
+## Monitoring
+
+Docker Compose includes Prometheus and Grafana. The provisioned **Webshop Overview** dashboard
+shows whether the web app and each API service are reachable, total storefront requests over the
+selected period, request rate, and API 5xx rates. The storefront remains available at
+http://localhost:3000 through an internal Nginx proxy, which records every browser request.
+
+Set `GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD` in `.env` before exposing Grafana outside
+your machine. Prometheus, metric endpoints, and the Nginx status endpoint are only accessible on
+the Compose network; only Grafana is published on port 3001.
 
 Product data, theme settings, and uploaded product images are stored in Supabase. Before starting
 Docker for the first time, configure `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env` and

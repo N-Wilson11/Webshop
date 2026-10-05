@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: Webshop
+    orgId: 1
+    folder: Webshop
+    type: file
+    disableDeletion: true
+    options:
+      path: /var/lib/grafana/dashboards
