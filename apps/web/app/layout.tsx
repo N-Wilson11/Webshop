@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { getTheme } from "@/lib/api";
+import { pwaIconPath } from "@/lib/pwa";
 import { CartProvider } from "@/components/CartProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -11,8 +12,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: theme.shopName,
     description: theme.tagline,
-    icons: { icon: theme.iconUrl }
+    icons: { icon: theme.iconUrl, apple: pwaIconPath(180, theme.iconUrl) },
+    appleWebApp: { capable: true, title: theme.shopName }
   };
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  const theme = await getTheme();
+  return { themeColor: theme.colors.primary };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
